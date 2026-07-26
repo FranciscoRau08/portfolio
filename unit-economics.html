@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Floor P&L — unit-economics model</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%230a0a0c%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27monospace%27 font-size=%2734%27 font-weight=%27bold%27 fill=%27%23f5f5f7%27 text-anchor=%27middle%27%3EF%3C/text%3E%3Crect x=%2744%27 y=%2738%27 width=%278%27 height=%2712%27 fill=%27%23ff3b47%27/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#16202E; --muted:#55607A; --faint:#8A93A6;
+    --bg:#F7F9FC; --card:#fff; --line:#E2E8F2; --grid:#D5DBE6;
+    --hdr:#EEF2F8; --zebra:#FAFBFD;
+    --accent:#1F4FD8;
+    --green:#E4F6EC; --greenT:#0E7A4E; --amber:#FCF1DA; --amberT:#8A5A15; --rose:#FBE4E6; --roseT:#A32E4A;
+    --rev:#0E7A4E; --cost:#C22F45;
+    --c0:#d55181; --c1:#4a3aa7; --c2:#199e70; --c3:#c98500;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);line-height:1.5;font-size:15px}
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 20px 60px}
+  .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:7px}
+  h1{font-size:27px;letter-spacing:-.02em}
+  .sub{color:var(--muted);margin-top:7px;max-width:880px;font-size:14.5px}
+  .disclaimer{margin-top:12px;background:#FDF6E9;border:1px solid #F0E0C0;color:#7A5A18;border-radius:8px;padding:9px 13px;font-size:12.8px;max-width:880px}
+
+  .card{background:#fff;border:1px solid var(--grid);border-radius:10px;padding:16px 18px;margin-top:20px}
+  h3.block{font-size:15px;margin:0 0 4px;letter-spacing:-.01em}
+  .note{font-size:12.5px;color:var(--muted);margin:4px 0 12px;max-width:920px}
+  .summ{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:#F1F5FC;border:1px solid var(--line);
+    border-radius:7px;padding:7px 11px;display:inline-block;margin:2px 0 12px}
+
+  .tgl{display:inline-flex;gap:2px;border:1px solid var(--grid);border-radius:8px;overflow:hidden;margin-left:12px;vertical-align:middle}
+  .tgl button{font:inherit;font-size:12.5px;font-weight:600;padding:5px 13px;border:none;background:#EDF1F7;color:var(--muted);cursor:pointer}
+  .tgl button.on{background:var(--accent);color:#fff}
+  .tgl button:hover:not(.on){background:#E3E9F3}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 4px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .stat .n{font-size:21px;font-weight:700;letter-spacing:-.02em}
+  .stat .l{font-size:11.5px;color:var(--faint);margin-top:1px}
+  .stat .n .pos{color:var(--greenT)} .stat .n .neg{color:var(--roseT)}
+
+  .scroll{overflow-x:auto;border:1px solid var(--grid);border-radius:6px}
+  table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
+  thead th{background:var(--hdr);border:1px solid var(--grid);padding:6px 9px;text-align:right;font-weight:700;font-size:11px}
+  thead th.l{text-align:left}
+  tbody td{border:1px solid var(--grid);padding:5px 9px;text-align:right;font-family:var(--mono);font-size:11.5px}
+  tbody td.l{text-align:left;font-family:inherit;font-size:12px;font-weight:600}
+  tbody tr:hover td{background:#EEF4FF}
+  .zebra tbody tr:nth-child(even) td{background:var(--zebra)}
+  tr.total td{background:#F1F5FC !important;font-weight:700}
+  .cell-g{background:var(--green);color:var(--greenT);font-weight:700}
+  .cell-a{background:var(--amber);color:var(--amberT);font-weight:700}
+  .cell-r{background:var(--rose);color:var(--roseT);font-weight:700}
+  .dotc{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:baseline}
+
+  .legend{display:flex;flex-wrap:wrap;gap:7px 18px;font-size:11.5px;color:var(--muted);margin:2px 0 8px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:18px;height:11px;border-radius:3px}
+  .selbtns{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 10px}
+  .selbtns button{font:inherit;font-size:12px;font-weight:600;padding:4px 12px;border:1px solid var(--grid);border-radius:16px;
+    background:#fff;color:var(--muted);cursor:pointer}
+  .selbtns button.on{border-color:var(--accent);color:var(--accent);background:#EFF4FE}
+  canvas{width:100%;max-width:980px;display:block;border-radius:8px}
+
+  .method{background:#FCFDFF;border:1px dashed var(--grid);border-radius:9px;padding:11px 14px;font-size:12.3px;color:var(--muted);
+    max-width:920px;margin-top:14px}
+  .method b{color:var(--ink)}
+  .foot{margin-top:26px;font-size:12.5px;color:var(--faint);max-width:880px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Portfolio concept · own design</div>
+  <h1>Floor P&amp;L — unit-economics model</h1>
+  <p class="sub">A working model that converts an <b>outcome-billed call floor into money terms</b>: what every
+  agent-hour costs, what every campaign, call attempt and talk-minute earns — and where the operation stops making
+  money. Designed as the layer on top of the capacity, performance and live-ops tools: every operational
+  percentage gets a <b>€ meaning</b>.</p>
+  <div class="disclaimer"><b>Concept piece — my own design, all data fictional.</b> Fees, rates, volumes and pickup
+  curves are invented to demonstrate the method. Not a recreation of any production system.</div>
+
+  <!-- ═══════════ KPI strip ═══════════ -->
+  <div class="card">
+    <h3 class="block">Floor P&amp;L
+      <span class="tgl" id="period">
+        <button data-f="1" class="on">Today</button><button data-f="5">Week</button><button data-f="21">Month</button>
+      </span>
+    </h3>
+    <p class="note">Direct margin: outcome revenue minus loaded agent-hours. One line per campaign — and the
+    <b>break-even closing %</b> column is the closing rate at which a campaign stops covering its own cost:
+    the € meaning of the closing metric in the Daily Agent Report.</p>
+    <div class="stats" id="kpis"></div>
+    <div style="height:10px"></div>
+    <div class="scroll"><table class="zebra" id="pnl">
+      <thead><tr>
+        <th class="l">Campaign</th><th>Records</th><th>Dials</th><th>Answered</th><th>Successes</th>
+        <th>Closing %</th><th>Agent-hours</th><th>Revenue</th><th>Direct cost</th><th>Margin</th><th>Margin %</th>
+        <th>Break-even closing %</th>
+      </tr></thead><tbody></tbody>
+    </table></div>
+    <p class="note" style="margin-top:10px" id="pnlNote"></p>
+  </div>
+
+  <!-- ═══════════ attempt economics ═══════════ -->
+  <div class="card">
+    <h3 class="block">Where the money is made — economics per call attempt</h3>
+    <p class="note">Revenue is attributed to the attempt that converted; cost is the dial time <b>every</b> attempt
+    burns. By the 5th attempt only ~5–6% of records answer — but you still pay for the other ~95 dials.
+    Pickup and conversion decay with each attempt while the cost of a dial barely falls, so late attempts go
+    underwater. <b>The retry policy is a money dial, not an ops dial.</b></p>
+    <div class="selbtns" id="selCamp"></div>
+    <div class="legend">
+      <span><i style="background:var(--rev)"></i>revenue</span>
+      <span><i style="background:var(--cost)"></i>direct cost</span>
+      <span><i style="background:#16202E;height:3px"></i>margin</span>
+    </div>
+    <canvas id="cvAtt" width="1900" height="470"></canvas>
+    <p class="note" style="margin-top:10px" id="attNote"></p>
+  </div>
+
+  <!-- ═══════════ break-even duration ═══════════ -->
+  <div class="card">
+    <h3 class="block">Break-even talk duration — how long can a call afford to be?</h3>
+    <p class="note">Margin per dial as a function of average talk time, per campaign. Where a line crosses zero is
+    that campaign's <b>break-even duration</b>; the dot is where it operates today. A high-fee consultative
+    campaign buys enormous headroom; a volume campaign lives close to the line — and one of these is
+    operating <b>within a minute of underwater</b>.</p>
+    <canvas id="cvDur" width="1900" height="470"></canvas>
+  </div>
+
+  <!-- ═══════════ campaign aging ═══════════ -->
+  <div class="card">
+    <h3 class="block">When to stop calling — campaign aging</h3>
+    <p class="note">As a campaign runs, fresh records deplete and the average attempt number climbs, so weekly
+    margin decays (modelled here as an index of launch-week margin). Where a line crosses zero is the week the
+    campaign starts <b>dragging</b> — the point to stop, refresh the file, or renegotiate the fee.</p>
+    <canvas id="cvAge" width="1900" height="440"></canvas>
+  </div>
+
+  <!-- ═══════════ margin by hour ═══════════ -->
+  <div class="card">
+    <h3 class="block">Margin by hour of day</h3>
+    <p class="note">Staffing cost is roughly flat across the day while contact rates fade after the morning peak —
+    so the margin curve falls all afternoon and the last stretch of the day dials at a loss. The same fade the
+    pace curve shows operationally, priced in euros.</p>
+    <canvas id="cvHr" width="1900" height="400"></canvas>
+  </div>
+
+  <div class="method"><b>Model assumptions (all fictional):</b> loaded agent cost <b id="mRate"></b>/hour
+  (wage, telephony, seat, supervision) · unanswered dial costs <b>40s</b> of agent time · records get up to
+  <b>5 attempts</b>, answered-but-not-converted records are retired · revenue booked on the converting attempt ·
+  cohort flows deterministically through the attempt funnel, so every chart and the P&amp;L reconcile to the same
+  underlying numbers.</div>
+
+  <p class="foot">Fourth piece of the suite: <b>capacity</b> (staffing simulator) → <b>performance</b> (daily agent
+  report) → <b>live ops</b> (TV board) → <b>economics</b> (this model). All four share one fictional operation.</p>
+</div>
+
+<script>
+/* ═══════════ economic engine — one cohort model drives everything ═══════════ */
+const RATE=42;            // € per loaded agent-hour
+const UNANS=0.67;         // minutes burned per unanswered dial
+const CAMPS=[
+  {n:"Aurora Pensioen",    col:"#d55181", recs:260, fee:58, talk:8.5,
+   p:[.30,.21,.14,.09,.05], c:[.34,.30,.26,.22,.18]},
+  {n:"Castellum Verzekert",col:"#4a3aa7", recs:520, fee:40, talk:3.2,
+   p:[.32,.22,.15,.10,.06], c:[.21,.19,.17,.15,.13]},
+  {n:"Meridian Uitvaart",  col:"#199e70", recs:380, fee:45, talk:4.6,
+   p:[.30,.21,.14,.09,.06], c:[.26,.23,.20,.17,.14]},
+  {n:"Helios Leven",       col:"#c98500", recs:300, fee:40, talk:6.8,
+   p:[.26,.18,.12,.08,.05], c:[.22,.19,.16,.14,.12]},
+];
+const AGING={ "Aurora Pensioen":9, "Castellum Verzekert":6, "Meridian Uitvaart":7, "Helios Leven":3 }; // stop-week
+
+function econ(cp){
+  let N=cp.recs; const att=[];
+  for(let k=0;k<5;k++){
+    const ans=N*cp.p[k], succ=ans*cp.c[k];
+    const min=ans*cp.talk+(N-ans)*UNANS;
+    const cost=min/60*RATE, rev=succ*cp.fee;
+    att.push({dials:N,ans,succ,min,cost,rev,margin:rev-cost});
+    N-=ans;
+  }
+  const T=f=>att.reduce((s,a)=>s+a[f],0);
+  const dials=T("dials"),ans=T("ans"),succ=T("succ"),min=T("min"),cost=T("cost"),rev=T("rev");
+  const P=ans/dials, C=succ/ans;
+  const tBE=(P*C*cp.fee*60/RATE-(1-P)*UNANS)/P;          // break-even talk minutes
+  const cBE=cost/(ans*cp.fee);                            // break-even closing rate
+  return {cp,att,dials,ans,succ,min,hours:min/60,cost,rev,margin:rev-cost,P,C,tBE,cBE};
+}
+const E=CAMPS.map(econ);
+const FLOOR={
+  rev:E.reduce((s,e)=>s+e.rev,0), cost:E.reduce((s,e)=>s+e.cost,0),
+  hours:E.reduce((s,e)=>s+e.hours,0), succ:E.reduce((s,e)=>s+e.succ,0),
+  att:[0,1,2,3,4].map(k=>({
+    rev:E.reduce((s,e)=>s+e.att[k].rev,0), cost:E.reduce((s,e)=>s+e.att[k].cost,0),
+    margin:E.reduce((s,e)=>s+e.att[k].margin,0)
+  }))
+};
+FLOOR.margin=FLOOR.rev-FLOOR.cost;
+
+const eur=v=>(v<0?"−€":"€")+Math.round(Math.abs(v)).toLocaleString("nl-NL");
+const pct=v=>Math.round(v*100)+"%";
+let F=1;   // period factor
+
+/* ═══════════ KPIs + P&L table ═══════════ */
+function renderKPIs(){
+  const s=(n,l)=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  document.getElementById("kpis").innerHTML=
+    s(eur(FLOOR.rev*F),"revenue")+
+    s(eur(FLOOR.cost*F),"direct cost")+
+    s(`<span class="pos">${eur(FLOOR.margin*F)}</span> <span style="font-size:13px;color:var(--faint)">· ${pct(FLOOR.margin/FLOOR.rev)}</span>`,"direct margin")+
+    s(eur(FLOOR.rev/FLOOR.hours),"revenue / agent-hour")+
+    s(eur(FLOOR.cost/FLOOR.succ),"cost / success")+
+    s(Math.round(FLOOR.succ*F).toLocaleString("nl-NL"),"successes");
+}
+function renderPNL(){
+  const tb=document.querySelector("#pnl tbody");
+  tb.innerHTML=E.map(e=>{
+    const okC=e.C>=e.cBE, gap=(e.C-e.cBE)*100;
+    const beCls= gap>=5?"cell-g": gap>=0?"cell-a":"cell-r";
+    return `<tr>
+      <td class="l"><span class="dotc" style="background:${e.cp.col}"></span>${e.cp.n}</td>
+      <td>${Math.round(e.cp.recs*F).toLocaleString("nl-NL")}</td>
+      <td>${Math.round(e.dials*F).toLocaleString("nl-NL")}</td>
+      <td>${Math.round(e.ans*F).toLocaleString("nl-NL")}</td>
+      <td>${Math.round(e.succ*F).toLocaleString("nl-NL")}</td>
+      <td>${pct(e.C)}</td>
+      <td>${Math.round(e.hours*F).toLocaleString("nl-NL")}</td>
+      <td>${eur(e.rev*F)}</td>
+      <td>${eur(e.cost*F)}</td>
+      <td class="${e.margin>=0?'cell-g':'cell-r'}">${eur(e.margin*F)}</td>
+      <td>${pct(e.margin/e.rev)}</td>
+      <td class="${beCls}" title="${okC?'above':'below'} break-even">${pct(e.cBE)} <span style="font-weight:400;color:inherit">(now ${pct(e.C)})</span></td>
+    </tr>`;
+  }).join("")+
+  `<tr class="total"><td class="l">Floor total</td>
+    <td>${Math.round(CAMPS.reduce((s,c)=>s+c.recs,0)*F).toLocaleString("nl-NL")}</td>
+    <td>${Math.round(E.reduce((s,e)=>s+e.dials,0)*F).toLocaleString("nl-NL")}</td>
+    <td>${Math.round(E.reduce((s,e)=>s+e.ans,0)*F).toLocaleString("nl-NL")}</td>
+    <td>${Math.round(FLOOR.succ*F).toLocaleString("nl-NL")}</td><td>—</td>
+    <td>${Math.round(FLOOR.hours*F).toLocaleString("nl-NL")}</td>
+    <td>${eur(FLOOR.rev*F)}</td><td>${eur(FLOOR.cost*F)}</td>
+    <td class="cell-g">${eur(FLOOR.margin*F)}</td><td>${pct(FLOOR.margin/FLOOR.rev)}</td><td>—</td></tr>`;
+  const thin=E.reduce((a,b)=>(a.margin/a.rev)<(b.margin/b.rev)?a:b);
+  document.getElementById("pnlNote").innerHTML=
+    `<b>${thin.cp.n}</b> is the campaign to watch: ${pct(thin.margin/thin.rev)} margin, closing
+    ${((thin.C-thin.cBE)*100).toFixed(1)} pt above its break-even rate — a small dip in conversion puts the whole
+    campaign underwater. That conversation (renegotiate the fee, cap the attempts, or exit) is exactly what this
+    layer exists to trigger.`;
+}
+document.querySelectorAll("#period button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#period button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); F=+b.dataset.f; renderKPIs(); renderPNL();
+});
+
+/* ═══════════ chart helpers ═══════════ */
+function frame(cv){ const ctx=cv.getContext("2d"); ctx.clearRect(0,0,cv.width,cv.height); return ctx; }
+function gridY(ctx,W,padL,padR,Y,vals,fmt){
+  ctx.font="19px ui-monospace,monospace"; ctx.textAlign="right"; ctx.fillStyle="#8A93A6";
+  vals.forEach(v=>{ const y=Y(v);
+    ctx.strokeStyle= v===0?"#B9C2D2":"#EDF1F8"; ctx.lineWidth=v===0?2:1;
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.fillText(fmt(v),padL-10,y+7); });
+}
+
+/* ═══════════ attempt economics chart ═══════════ */
+let selCamp=-1;   // -1 = whole floor
+function attemptData(){ return selCamp<0? FLOOR.att : E[selCamp].att.map(a=>({rev:a.rev,cost:a.cost,margin:a.margin})); }
+function drawAttempts(){
+  const cv=document.getElementById("cvAtt"), ctx=frame(cv);
+  const W=cv.width,H=cv.height,padL=110,padR=40,padT=30,padB=64,pw=W-padL-padR,ph=H-padT-padB;
+  const A=attemptData();
+  const maxY=Math.max(...A.map(a=>a.rev))*1.1;
+  const minY=Math.min(0,...A.map(a=>a.margin))*1.5-maxY*0.03;
+  const Y=v=>padT+ph-((v-minY)/(maxY-minY))*ph;
+  const step=Math.pow(10,Math.floor(Math.log10(maxY/4)));
+  const ticks=[]; for(let v=Math.ceil(minY/step)*step; v<=maxY; v+=step) ticks.push(v);
+  gridY(ctx,W,padL,padR,Y,ticks,v=>eur(v));
+  const gw=pw/5, bw=gw*0.22;
+  A.forEach((a,k)=>{
+    const cx=padL+gw*k+gw/2;
+    ctx.fillStyle="#0E7A4E"; roundBar(ctx,cx-bw-4,Y(a.rev),bw,Y(0)-Y(a.rev));
+    ctx.fillStyle="#C22F45"; roundBar(ctx,cx+4,Y(a.cost),bw,Y(0)-Y(a.cost));
+    ctx.fillStyle="#55607A"; ctx.textAlign="center"; ctx.font="20px ui-monospace,monospace";
+    ctx.fillText("Attempt "+(k+1),cx,H-30);
+    ctx.font="17px ui-monospace,monospace"; ctx.fillStyle="#8A93A6";
+    ctx.fillText(eur(a.rev),cx-bw/2-4,Y(a.rev)-9);
+    ctx.fillText(eur(a.cost),cx+bw/2+4,Y(a.cost)-9);
+  });
+  // margin line
+  ctx.beginPath();
+  A.forEach((a,k)=>{ const x=padL+gw*k+gw/2, y=Y(a.margin); k?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.strokeStyle="#16202E"; ctx.lineWidth=3.5; ctx.stroke();
+  A.forEach((a,k)=>{
+    const x=padL+gw*k+gw/2, y=Y(a.margin);
+    ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2);
+    ctx.fillStyle=a.margin>=0?"#0ca30c":"#d03b3b"; ctx.fill();
+    ctx.strokeStyle="#fff"; ctx.lineWidth=2.5; ctx.stroke();
+    ctx.fillStyle=a.margin>=0?"#0E7A4E":"#A32E4A"; ctx.font="bold 19px ui-monospace,monospace";
+    ctx.fillText(eur(a.margin),x,y+(a.margin>=0?-14:26));
+  });
+  // break-even divider
+  const bi=A.findIndex(a=>a.margin<0);
+  if(bi>0){
+    const x=padL+gw*bi;
+    ctx.setLineDash([7,6]); ctx.strokeStyle="#A32E4A"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+ph); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle="#A32E4A"; ctx.font="bold 18px ui-monospace,monospace"; ctx.textAlign="left";
+    ctx.fillText("↓ money-losing attempts",x+8,padT+18);
+  }
+  const lost=A.filter(a=>a.margin<0).reduce((s,a)=>s+a.margin,0);
+  document.getElementById("attNote").innerHTML= lost<0
+    ? `Attempts beyond the break-even line lose <b>${eur(-lost)} per day</b>${selCamp<0?" floor-wide":""} —
+       capping the retry schedule earlier (or pricing later attempts into the fee) reclaims it. This is the same
+       retry policy the dialer inventory manages operationally; here it gets a price.`
+    : `Every attempt of this campaign is margin-positive — its retry schedule is priced correctly.`;
+}
+function roundBar(ctx,x,y,w,h){ if(h<=0)return; const r=Math.min(4,w/2);
+  ctx.beginPath(); ctx.moveTo(x,y+h); ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h); ctx.closePath(); ctx.fill(); }
+const sel=document.getElementById("selCamp");
+sel.innerHTML=`<button class="on" data-i="-1">Whole floor</button>`+
+  CAMPS.map((c,i)=>`<button data-i="${i}">${c.n}</button>`).join("");
+sel.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  sel.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); selCamp=+b.dataset.i; drawAttempts();
+});
+
+/* ═══════════ break-even duration chart ═══════════ */
+function drawDurations(){
+  const cv=document.getElementById("cvDur"), ctx=frame(cv);
+  const W=cv.width,H=cv.height,padL=100,padR=60,padT=26,padB=60,pw=W-padL-padR,ph=H-padT-padB;
+  const tMax=24;
+  const m=(e,t)=> e.P*e.C*e.cp.fee - (e.P*t+(1-e.P)*UNANS)/60*RATE;   // € margin per dial at talk length t
+  const ys=E.flatMap(e=>[m(e,0),m(e,tMax)]);
+  const maxY=Math.max(...ys)*1.12, minY=Math.min(...ys,-0.4)*1.12;
+  const X=t=>padL+pw*t/tMax, Y=v=>padT+ph-((v-minY)/(maxY-minY))*ph;
+  gridY(ctx,W,padL,padR,Y,[-0.5,0,0.5,1,1.5,2].filter(v=>v>minY&&v<maxY),v=>"€"+v.toFixed(2));
+  ctx.font="19px ui-monospace,monospace"; ctx.fillStyle="#8A93A6"; ctx.textAlign="center";
+  for(let t=0;t<=tMax;t+=4) ctx.fillText(t+" min",X(t),H-26);
+  E.forEach(e=>{
+    ctx.beginPath(); ctx.moveTo(X(0),Y(m(e,0))); ctx.lineTo(X(tMax),Y(m(e,tMax)));
+    ctx.strokeStyle=e.cp.col; ctx.lineWidth=3; ctx.stroke();
+    // break-even ring
+    if(e.tBE>0&&e.tBE<tMax){
+      ctx.beginPath(); ctx.arc(X(e.tBE),Y(0),8,0,Math.PI*2);
+      ctx.strokeStyle=e.cp.col; ctx.lineWidth=3; ctx.fillStyle="#fff"; ctx.fill(); ctx.stroke();
+      ctx.fillStyle=e.cp.col; ctx.font="bold 17px ui-monospace,monospace";
+      ctx.fillText(e.tBE.toFixed(1)+"m",X(e.tBE),Y(0)+30);
+    }
+    // current operating point
+    ctx.beginPath(); ctx.arc(X(e.cp.talk),Y(m(e,e.cp.talk)),7.5,0,Math.PI*2);
+    ctx.fillStyle=e.cp.col; ctx.fill(); ctx.strokeStyle="#fff"; ctx.lineWidth=2.5; ctx.stroke();
+    // label at line start
+    ctx.fillStyle=e.cp.col; ctx.textAlign="left"; ctx.font="bold 18px ui-monospace,monospace";
+    ctx.fillText(e.cp.n.split(" ")[0],X(0.3),Y(m(e,0.3))-10);
+  });
+  ctx.fillStyle="#8A93A6"; ctx.textAlign="left"; ctx.font="18px ui-monospace,monospace";
+  ctx.fillText("margin per dial  ·  dot = current avg talk time  ·  ring = break-even duration",padL,padT-6);
+}
+
+/* ═══════════ campaign aging chart ═══════════ */
+function drawAging(){
+  const cv=document.getElementById("cvAge"), ctx=frame(cv);
+  const W=cv.width,H=cv.height,padL=100,padR=130,padT=26,padB=60,pw=W-padL-padR,ph=H-padT-padB;
+  const wMax=10, maxY=1.05, minY=-0.45;
+  const X=w=>padL+pw*(w-1)/(wMax-1), Y=v=>padT+ph-((v-minY)/(maxY-minY))*ph;
+  gridY(ctx,W,padL,padR,Y,[-0.4,-0.2,0,0.2,0.4,0.6,0.8,1],v=>Math.round(v*100)+"%");
+  ctx.font="19px ui-monospace,monospace"; ctx.fillStyle="#8A93A6"; ctx.textAlign="center";
+  for(let w=1;w<=wMax;w++) ctx.fillText("wk "+w,X(w),H-26);
+  E.forEach(e=>{
+    const stop=AGING[e.cp.n];
+    ctx.beginPath();
+    for(let w=1;w<=wMax;w+=0.25){
+      const v=1-Math.pow((w-1)/(stop-1),1.15);
+      const x=X(w),y=Y(Math.max(minY,v));
+      w===1?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle=e.cp.col; ctx.lineWidth=3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(X(stop),Y(0),8,0,Math.PI*2);
+    ctx.fillStyle="#fff"; ctx.strokeStyle=e.cp.col; ctx.lineWidth=3; ctx.fill(); ctx.stroke();
+    ctx.fillStyle=e.cp.col; ctx.font="bold 17px ui-monospace,monospace";
+    ctx.fillText("stop wk "+stop,X(stop),Y(0)-14);
+    ctx.textAlign="left"; ctx.font="bold 18px ui-monospace,monospace";
+    ctx.fillText(e.cp.n.split(" ")[0],W-padR+10,Y(1-Math.pow((wMax-1)/(stop-1),1.15))+6);
+    ctx.textAlign="center";
+  });
+  ctx.fillStyle="#8A93A6"; ctx.textAlign="left"; ctx.font="18px ui-monospace,monospace";
+  ctx.fillText("weekly margin as % of launch week  ·  ring = the week the campaign starts dragging",padL,padT-6);
+}
+
+/* ═══════════ margin by hour ═══════════ */
+function drawHours(){
+  const cv=document.getElementById("cvHr"), ctx=frame(cv);
+  const W=cv.width,H=cv.height,padL=110,padR=40,padT=30,padB=60,pw=W-padL-padR,ph=H-padT-padB;
+  const shares=[.20,.20,.17,.13,.10,.08,.07,.05];
+  const labels=["09–10","10–11","11–12","12–13","13–14","14–15","15–16","16–17"];
+  const costH=FLOOR.cost/8;
+  const marg=shares.map(s=>FLOOR.rev*s-costH);
+  const maxY=Math.max(...marg)*1.15, minY=Math.min(...marg,0)*1.6;
+  const Y=v=>padT+ph-((v-minY)/(maxY-minY))*ph;
+  gridY(ctx,W,padL,padR,Y,[0,300,600,900,1200].filter(v=>v<maxY),v=>eur(v));
+  const gw=pw/8, bw=gw*0.52;
+  marg.forEach((v,i)=>{
+    const cx=padL+gw*i+gw/2;
+    ctx.fillStyle= v>=0?"#0E7A4E":"#C22F45";
+    if(v>=0) roundBar(ctx,cx-bw/2,Y(v),bw,Y(0)-Y(v));
+    else { ctx.beginPath(); ctx.rect(cx-bw/2,Y(0),bw,Y(v)-Y(0)); ctx.fill(); }
+    ctx.fillStyle= v>=0?"#0E7A4E":"#A32E4A"; ctx.textAlign="center"; ctx.font="bold 18px ui-monospace,monospace";
+    ctx.fillText(eur(v),cx,v>=0?Y(v)-10:Y(v)+26);
+    ctx.fillStyle="#55607A"; ctx.font="19px ui-monospace,monospace";
+    ctx.fillText(labels[i],cx,H-26);
+  });
+}
+
+/* ═══════════ init ═══════════ */
+document.getElementById("mRate").textContent="€"+RATE;
+renderKPIs(); renderPNL(); drawAttempts(); drawDurations(); drawAging(); drawHours();
+</script>
+</body>
+</html>

@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Agent Report — recreation</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%230a0a0c%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27monospace%27 font-size=%2734%27 font-weight=%27bold%27 fill=%27%23f5f5f7%27 text-anchor=%27middle%27%3EF%3C/text%3E%3Crect x=%2744%27 y=%2738%27 width=%278%27 height=%2712%27 fill=%27%23ff3b47%27/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#16202E; --muted:#55607A; --faint:#8A93A6;
+    --bg:#F7F9FC; --card:#fff; --line:#E2E8F2; --grid:#D5DBE6;
+    --hdr:#EEF2F8; --zebra:#FAFBFD;
+    --accent:#1F4FD8;
+    --green:#E4F6EC; --greenT:#0E7A4E; --amber:#FCF1DA; --amberT:#8A5A15; --rose:#FBE4E6; --roseT:#A32E4A;
+    --pink:#FCE7F0; --pinkB:#F3C9DD; --pinkA:#FDF1F6;
+    --blue:#E4EEFC; --blueB:#C6DBF6; --blueA:#F0F6FE;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);line-height:1.5;font-size:15px}
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 20px 60px}
+  .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:7px}
+  h1{font-size:27px;letter-spacing:-.02em}
+  .sub{color:var(--muted);margin-top:7px;max-width:860px;font-size:14.5px}
+  .disclaimer{margin-top:12px;background:#FDF6E9;border:1px solid #F0E0C0;color:#7A5A18;border-radius:8px;padding:9px 13px;font-size:12.8px}
+
+  /* excel tab bar */
+  .tabs{display:flex;flex-wrap:wrap;gap:2px;margin-top:18px;border-bottom:2px solid var(--grid)}
+  .tabs button{font:inherit;font-size:12.5px;font-weight:600;padding:8px 14px;border:1px solid var(--grid);
+    border-bottom:none;border-radius:7px 7px 0 0;background:#EDF1F7;color:var(--muted);cursor:pointer;margin-bottom:-2px}
+  .tabs button:hover{background:#E3E9F3;color:var(--ink)}
+  .tabs button.on{background:#fff;color:var(--ink);border-color:var(--grid);border-bottom:2px solid #fff}
+
+  .sheet{display:none;background:#fff;border:1px solid var(--grid);border-top:none;border-radius:0 0 8px 8px;padding:16px 16px 20px}
+  .sheet.on{display:block}
+  .sheet h2{font-size:17px;letter-spacing:-.01em}
+  .sheet .note{font-size:12.3px;color:var(--muted);margin:5px 0 12px;max-width:900px}
+  .sheet .summ{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:#F1F5FC;border:1px solid var(--line);
+    border-radius:7px;padding:7px 11px;display:inline-block;margin-bottom:10px}
+
+  .legend{display:flex;flex-wrap:wrap;gap:7px 16px;font-size:11.5px;color:var(--muted);margin-bottom:12px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:22px;height:12px;border-radius:3px;border:1px solid var(--grid)}
+
+  .scroll{overflow-x:auto;border:1px solid var(--grid);border-radius:6px}
+  table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
+  thead th{position:sticky;top:0;background:var(--hdr);border:1px solid var(--grid);padding:6px 9px;text-align:right;
+    font-weight:700;font-size:11px;z-index:2}
+  thead th.l{text-align:left}
+  tbody td{border:1px solid var(--grid);padding:5px 9px;text-align:right;font-family:var(--mono);font-size:11.5px}
+  tbody td.l{text-align:left;font-family:inherit;font-size:12px}
+  tbody td.name{font-weight:600}
+  tbody tr:hover td{background:#EEF4FF !important}
+  .zebra tbody tr:nth-child(even) td{background:var(--zebra)}
+  .row-pink td{background:var(--pink) !important} .row-pinkA td{background:var(--pinkA) !important}
+  .row-blue td{background:var(--blue) !important} .row-blueA td{background:var(--blueA) !important}
+  .cell-g{background:var(--green);color:var(--greenT);font-weight:700}
+  .cell-a{background:var(--amber);color:var(--amberT);font-weight:700}
+  .cell-r{background:var(--rose);color:var(--roseT);font-weight:700}
+  .cell-thin{background:#F1F3F7;color:#8A93A6;font-weight:600}
+  .tag{font-size:10px;background:#EEF2F9;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--muted)}
+  .pos{color:var(--greenT)} .neg{color:var(--roseT)} .dim{color:var(--faint)}
+  .lbl-wa{color:#0E7A4E;font-weight:600}.lbl-a{color:#2b8a5a}.lbl-op{color:var(--muted)}.lbl-b{color:#b06a2a}.lbl-wb{color:#A32E2E;font-weight:600}
+  .flag{font-size:14px}
+
+  .awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin:10px 0 18px}
+  .award{border:1px solid var(--line);border-radius:9px;padding:11px 13px;background:#FCFDFF}
+  .award .a{font-size:11.5px;color:var(--faint);font-weight:600}
+  .award .w{font-size:15px;font-weight:700;margin-top:2px}
+  .award .h{font-size:12.5px;color:var(--accent);font-weight:600;margin-top:1px}
+  .award .d{font-size:11.5px;color:var(--muted)}
+  .mom{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:16px}
+  .mom .m{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:#fff}
+  .mom .m .k{font-size:11.5px;color:var(--faint)}
+  .mom .m .v{font-size:19px;font-weight:700}
+  .mom .m .d{font-size:11.5px;font-family:var(--mono)}
+  h3.block{font-size:13px;margin:14px 0 8px;color:var(--ink)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .stat .n{font-size:21px;font-weight:700;letter-spacing:-.02em}
+  .stat .l{font-size:11.5px;color:var(--faint);margin-top:1px}
+  .dialer{border:1px solid var(--line);border-radius:12px;padding:15px 16px;margin-bottom:16px;
+          background:linear-gradient(180deg,#FBFCFE,#F4F8FD)}
+  .dseg-title{font-size:15px;font-weight:700;margin-bottom:5px}
+  .dsegs{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+  .dseg{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .dseg-h{font-size:12.5px;font-weight:700}
+  .dseg-big{font-size:22px;font-weight:700;letter-spacing:-.02em;margin:2px 0}
+  .dseg-sub{font-size:11.8px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Portfolio recreation · Dutch outbound contact centre</div>
+  <h1>Daily Agent Report</h1>
+  <p class="sub">An automated performance report for an outbound/inbound call floor. Every rate is judged
+  against a <b>“frontier” benchmark — the 70th percentile of real clean-day performance for that campaign ×
+  call-type over ~30 days</b> — so a hard campaign or a short shift is never unfairly penalised. Pace, closing
+  and a combined index; per-dialler breakdowns; break-pattern and work-from-home detection; and a historical
+  awards engine. Rebuilt from the original Excel/Sheets model.</p>
+  <div class="disclaimer"><b>All agent names, campaigns, diallers and figures are invented for this recreation.</b>
+  No employer or client data appears on this page. Structure, metrics and logic mirror the original.</div>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="sheets"></div>
+</div>
+
+<script>
+/* ═══════════ fictional entities (replace real client/agent names) ═══════════ */
+const CAMPAIGNS=["Aurora Pensioen","Castellum Verzekert","Meridian Uitvaart","Helios Leven"];
+const DIALLERS={
+  "Aurora Pensioen":["Outbound afspraak NL","Outbound afspraak ENG","Belafspraak tool NL"],
+  "Castellum Verzekert":["Klantbenadering","Nabellen info"],
+  "Meridian Uitvaart":["Klant bedenktijd","Terugbelverzoek"],
+  "Helios Leven":["Webinar afspraak","Klantbenadering"]
+};
+const FRONTIER={ // p70 clean-day calls/hour per dialler (fictional)
+  "Outbound afspraak NL":21.4,"Outbound afspraak ENG":21.0,"Belafspraak tool NL":4.0,
+  "Klantbenadering":50.4,"Nabellen info":24.7,"Klant bedenktijd":24.7,"Terugbelverzoek":22.0,"Webinar afspraak":6.0
+};
+const CLOSE_BP={ // p70 clean-day close rate per dialler (fictional)
+  "Outbound afspraak NL":.22,"Outbound afspraak ENG":.20,"Belafspraak tool NL":.55,
+  "Klantbenadering":.30,"Nabellen info":.34,"Klant bedenktijd":.32,"Terugbelverzoek":.28,"Webinar afspraak":.60
+};
+const NAMES=["Sanne Visser","Daan de Jong","Emma Bakker","Luca Jansen","Mila de Vries","Bram Smit",
+  "Noor Meijer","Finn Bos","Julia Vermeer","Tygo Kok","Sara Dijkstra","Jesse Peters","Fleur Hendriks",
+  "Sem van Dijk","Roos Willems","Milan Brouwer","Lars Mulder","Nova Timmermans"];
+
+let seed=7; const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
+const ri=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+const pick=a=>a[Math.floor(rnd()*a.length)];
+const hhmm=m=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+const paceCls=p=> p>=100?'cell-g':p>=85?'cell-a':'cell-r';
+
+/* ═══════════ build one agent's day ═══════════ */
+function makeAgent(name, i){
+  const home = rnd()<0.28;
+  let camps, dials;
+  if(i===2){                                   // one agent on the slow consultative dial (45-min calls)
+    camps=['Aurora Pensioen']; dials=['Belafspraak tool NL'];   // → few pitches/hour, shows the shrinkage
+  } else {
+    const nc = rnd()<0.32?2:1;
+    camps=[]; while(camps.length<nc){ const c=pick(CAMPAIGNS); if(!camps.includes(c)) camps.push(c); }
+    dials=camps.map(c=>pick(DIALLERS[c]));
+  }
+  // shift type: most work a full day, some start late, some leave early → drives the “–”/“~” states
+  const roll=rnd();
+  let first,last;
+  if(roll<0.15){ first=10*60+ri(8,50); last=16*60+ri(0,60); }          // late starter, works into late afternoon
+  else if(roll>0.82){ first=8*60+ri(56,66); last=13*60+ri(20,85); }    // genuine early leaver
+  else { first=8*60+ri(56,66); last=16*60+ri(20,60); }                // full shift → ~16:20–17:00
+  const hours=(last-first)/60;
+  // frontier expectation from the agent's dialler mix
+  const frontMix = dials.reduce((s,d)=>s+FRONTIER[d],0)/dials.length;
+  const skill = i===2? 0.35+rnd()*0.18 : 0.40+rnd()*0.62;   // floor runs BELOW the p70 frontier (a struggling operation, peaking early then fading)
+  const cph = Math.max(1.3, frontMix*skill);
+  const outbound = Math.round(cph*hours);
+  const inbound = rnd()<0.3?ri(0,16):0;
+  const total = outbound+inbound;
+  const expected = Math.round(frontMix*hours);
+  const callsPct = Math.round(total/Math.max(expected,1)*100);
+  const officeCPH = 20.2;
+  // breaks histogram
+  const nBreaks = ri(0,13);
+  const buckets=[0,0,0,0,0]; for(let b=0;b<nBreaks;b++){ buckets[Math.min(4,Math.floor(rnd()*rnd()*5))]++; }
+  const breakMin = buckets[0]*7+buckets[1]*15+buckets[2]*25+buckets[3]*45+buckets[4]*75;
+  // outcomes
+  const dialBP = dials.reduce((s,d)=>s+CLOSE_BP[d],0)/dials.length;
+  const pitched = Math.round(total*(0.55+rnd()*0.4));
+  const successes = Math.round(pitched*dialBP*(0.6+rnd()*0.9));
+  const closeRate = pitched? successes/pitched : 0;
+  const closingPct = Math.round((closeRate/dialBP)*100);
+  // empirical-Bayes shrinkage toward the dialler's frontier close rate (K pseudo-pitches at benchmark)
+  const K=4;
+  const closeAdjPct = Math.round(((successes + K*dialBP)/(pitched + K))/dialBP*100);
+  const closeThin = pitched < 8;                          // day-level denominator too small to trust raw
+  const combinedPct = Math.round(callsPct/100*closeAdjPct);
+  const label = callsPct>=130?'Well ahead':callsPct>=108?'Ahead':callsPct>=92?'On par':callsPct>=75?'Behind':'Well behind';
+  const ownPast = ri(-75,143);
+  const convPeers = successes>0? ri(-56,112) : null;
+  const convYest  = successes>0? ri(-33,100) : null;
+  // flags: pink = habitual break-taker, blue = worse WFH
+  let rowClass='', flag='';
+  if(breakMin>=70 && rnd()<0.30){ rowClass = rnd()<0.6?'row-pink':'row-pinkA'; flag='🔴'; }
+  else if(home && rnd()<0.4){ rowClass = rnd()<0.6?'row-blue':'row-blueA'; flag='🏠'; }
+  return {name,location:home?'Home':'Office',camps,dials,first,last,hours:+hours.toFixed(2),nBreaks,buckets,
+    outbound,inbound,total,expected,callsPct,cph:+cph.toFixed(1),officeCPH,label,ownPast,
+    successes,closingPct,closeAdjPct,closeThin,combinedPct,
+    convPeers,convYest,pitched,dialBP,rowClass,flag};
+}
+let AG = NAMES.map((n,i)=>makeAgent(n,i)).sort((a,b)=>b.total-a.total);
+const onShift=AG.length, teamCalls=AG.reduce((s,a)=>s+a.total,0),
+  teamExp=AG.reduce((s,a)=>s+a.expected,0), teamOut=AG.reduce((s,a)=>s+a.outbound,0),
+  teamIn=AG.reduce((s,a)=>s+a.inbound,0), teamSucc=AG.reduce((s,a)=>s+a.successes,0);
+const avgPace=AG.reduce((s,a)=>s+a.callsPct,0)/AG.length;   // floor-average pace → centre of the per-agent distribution
+
+/* ═══════════ SHEET 1 · Daily Report ═══════════ */
+/* ══════════ dialer inventory & burn-down — three independent time-of-day buckets ══════════ */
+function dialerData(){
+  const start=9*60, end=19*60, step=30;
+  const slots=[]; for(let m=start;m<end;m+=step) slots.push(m);   // 09:00 → 18:30
+  let s=123457; const r=()=>{ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; };
+  const shape=m=>{ const h=(m-540)/60;                            // floor throughput across the day
+    if(h<3) return 1.02-0.04*h; if(h<8) return 0.74-0.035*(h-3); return 0.40-0.05*(h-8); };
+  const raw=slots.map(m=>Math.max(0.05, shape(m)*(0.88+0.24*r())));
+  const rs=raw.reduce((a,b)=>a+b,0), floorCalls=2440;
+  const per=raw.map(v=>Math.round(v/rs*floorCalls));
+  const buckets=[
+    {n:'Morning',   from:9*60,  to:12*60, records:720,  col:'#1F4FD8'},
+    {n:'Afternoon', from:12*60, to:17*60, records:1400, col:'#0E8F9E'},
+    {n:'Evening',   from:17*60, to:19*60, records:480,  col:'#B7791F'}
+  ];
+  buckets.forEach(b=>{
+    let cum=0, clearAt=null;
+    slots.forEach((m,i)=>{ if(m>=b.from && m<b.to){ cum+=per[i]; if(clearAt==null && cum>=b.records) clearAt=m+step; } });
+    b.winCalls=cum; b.worked=Math.min(b.records,cum); b.left=b.records-b.worked;
+    b.idle=Math.max(0,cum-b.records); b.clearAt=b.left<=0?clearAt:null;
+  });
+  const totalRec=buckets.reduce((a,b)=>a+b.records,0);
+  const totalWorked=buckets.reduce((a,b)=>a+b.worked,0);
+  return {slots,step,per,buckets,totalRec,totalWorked,carry:totalRec-totalWorked,
+          pctWorked:Math.round(totalWorked/totalRec*100),floorCalls};
+}
+function dialerPanel(){
+  const d=dialerData();
+  const tile=b=>{
+    const status = b.clearAt!=null
+      ? `<span style="color:var(--greenT);font-weight:600">cleared ≈ ${hhmm(b.clearAt)}</span>${b.idle>40?` · <span style="color:var(--amberT)">${b.idle} spare capacity</span>`:''}`
+      : `<span style="color:var(--roseT);font-weight:600">${b.worked.toLocaleString()} worked · ${b.left.toLocaleString()} not reached</span>`;
+    return `<div class="dseg" style="border-top:3px solid ${b.col}">
+      <div class="dseg-h">${b.n} bucket <span class="dim" style="font-weight:400">· active ${hhmm(b.from)}–${hhmm(b.to)}</span></div>
+      <div class="dseg-big">${b.records.toLocaleString()}<span class="dim" style="font-size:12px;font-weight:400"> records queued</span></div>
+      <div class="dseg-sub">${b.winCalls.toLocaleString()} calls this window &nbsp;·&nbsp; ${status}</div>
+    </div>`;
+  };
+  return `<div class="dialer">
+    <div class="dseg-title">Dialer inventory &amp; burn-down <span class="dim" style="font-weight:400;text-transform:none;letter-spacing:0">— three time-of-day buckets, projected from the floor's throughput</span></div>
+    <p class="note" style="margin:0 0 12px">Clients can be called in different windows, so records sit in three independent buckets. The floor works whichever is <b>active by the clock — Morning until 12:00, Afternoon 12:00–17:00, Evening 17:00–19:00</b>. A record not reached is rescheduled into a future bucket (up to its attempt cap, then retired). This projects whether each bucket clears inside its window or spills to tomorrow.</p>
+    <div class="stats" style="margin:0 0 12px">
+      <div class="stat"><div class="n">${d.totalRec.toLocaleString()}</div><div class="l">records queued (all buckets)</div></div>
+      <div class="stat"><div class="n">${d.totalWorked.toLocaleString()}<span style="font-size:13px;color:var(--faint)"> · ${d.pctWorked}%</span></div><div class="l">reached today</div></div>
+      <div class="stat"><div class="n" style="color:${d.carry>0?'var(--roseT)':'var(--greenT)'}">${d.carry.toLocaleString()}</div><div class="l">carry to tomorrow</div></div>
+      <div class="stat"><div class="n">${d.floorCalls.toLocaleString()}</div><div class="l">calls made today</div></div>
+    </div>
+    <canvas id="burnCv" width="1900" height="380" style="width:100%;max-width:1000px;display:block;margin:2px 0 12px;border-radius:8px"></canvas>
+    <div class="dsegs">${d.buckets.map(tile).join('')}</div>
+  </div>`;
+}
+function drawBurndown(){
+  const cv=document.getElementById('burnCv'); if(!cv) return;
+  const d=dialerData(), ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,padL=76,padR=150,padT=20,padB=48,pw=W-padL-padR,ph=H-padT-padB;
+  const t0=9*60, t1=19*60, maxY=Math.max(...d.buckets.map(b=>b.records));
+  const X=m=>padL+pw*(m-t0)/(t1-t0), Y=v=>padT+ph-(v/maxY)*ph;
+  ctx.clearRect(0,0,W,H);
+  ctx.font='19px ui-monospace,monospace'; ctx.textAlign='right'; ctx.fillStyle='#8A93A6';
+  for(let v=0; v<=maxY; v+=Math.ceil(maxY/6/100)*100){ const y=Y(v);
+    ctx.strokeStyle='#EDF1F8'; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.fillText(v.toLocaleString(),padL-10,y+7); }
+  // bucket-switch dividers at 12:00 and 17:00
+  [12*60,17*60].forEach(m=>{ ctx.strokeStyle='#C6CEDC'; ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(X(m),padT); ctx.lineTo(X(m),padT+ph); ctx.stroke(); ctx.setLineDash([]); });
+  // each bucket burns down inside its own window
+  d.buckets.forEach(b=>{
+    let cum=0; const pts=[[b.from,b.records]];
+    d.slots.forEach((m,i)=>{ if(m>=b.from && m<b.to){ cum+=d.per[i]; pts.push([m+d.step, Math.max(0,b.records-cum)]); } });
+    ctx.beginPath(); pts.forEach((p,i)=>{ const x=X(p[0]),y=Y(p[1]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    ctx.strokeStyle=b.col; ctx.lineWidth=3; ctx.stroke();
+    // end marker
+    const last=pts[pts.length-1];
+    ctx.beginPath(); ctx.arc(X(last[0]),Y(last[1]),5,0,Math.PI*2);
+    ctx.fillStyle=last[1]<=0?'#0ca30c':'#d03b3b'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    // bucket label at its start
+    ctx.fillStyle=b.col; ctx.textAlign='left'; ctx.font='bold 17px ui-monospace,monospace';
+    ctx.fillText(b.n, X(b.from)+6, Y(b.records)-8);
+    // leftover callout
+    if(b.left>0){ ctx.fillStyle='#d03b3b'; ctx.font='bold 17px ui-monospace,monospace';
+      ctx.fillText(`${b.left} left`, Math.min(X(b.to)+8,W-padR+8), Y(b.left)+5); }
+  });
+  ctx.fillStyle='#8A93A6'; ctx.textAlign='center'; ctx.font='18px ui-monospace,monospace';
+  for(let m=t0;m<=t1;m+=60) ctx.fillText(hhmm(m),X(m),H-16);
+  ctx.textAlign='left'; ctx.fillStyle='#8A93A6'; ctx.font='18px ui-monospace,monospace';
+  ctx.fillText('records remaining in each bucket',padL-60,padT-4);
+}
+
+function sheetDaily(){
+  const lab=l=>({'Well ahead':'lbl-wa','Ahead':'lbl-a','On par':'lbl-op','Behind':'lbl-b','Well behind':'lbl-wb'}[l]);
+  const pc=(v,extra='%')=> v==null?'<td class="dim">n/a</td>':`<td class="${paceCls(v)}">${v}${extra}</td>`;
+  const sgn=v=> v==null?'<td class="dim">n/a</td>':`<td class="${v>=0?'pos':'neg'}">${v>0?'+':''}${v}%</td>`;
+  const rows=AG.map(a=>`<tr class="${a.rowClass}">
+    <td class="l name">${a.name}</td><td class="l">${a.location}</td>
+    <td class="l">${a.camps.map(c=>`<span class="tag">${c}</span>`).join(' ')}</td>
+    <td class="l">${a.dials.map(d=>`<span class="tag">${d}</span>`).join(' ')}</td>
+    <td>${hhmm(a.first)}</td><td>${hhmm(a.last)}</td>
+    <td>${a.nBreaks}</td><td>${a.buckets[0]||''}</td><td>${a.buckets[1]||''}</td><td>${a.buckets[2]||''}</td><td>${a.buckets[3]||''}</td><td>${a.buckets[4]||''}</td>
+    <td>${a.outbound}</td><td>${a.inbound}</td><td><b>${a.total}</b></td>
+    <td>${a.expected}</td>${pc(a.callsPct)}<td>${a.cph}</td><td class="dim">${a.officeCPH}</td>
+    <td class="${lab(a.label)}">${a.label}</td>${sgn(a.ownPast)}
+    <td>${a.successes}</td></tr>`).join('');
+  return `${dialerPanel()}
+  <div class="summ">${onShift} on shift &nbsp;·&nbsp; ${teamCalls}/${teamExp} calls (${Math.round(teamCalls/teamExp*100)}% pace) &nbsp;·&nbsp; ${teamOut} outbound · ${teamIn} inbound</div>
+  <p class="note" style="margin:-4px 0 12px"><b>Attendance gate:</b> the report won't open until whoever's running it confirms who's on shift and tags each agent <b>home</b> or <b>office</b> for the day. Location can't be known after the fact, so it's captured at the point of use — and that daily log is precisely what powers the longitudinal <span style="color:#2b5fb0;font-weight:600">work-from-home</span> comparison (the blue rows): an agent is only flagged once enough of their own home-vs-office days show a consistent gap.</p>
+  <div class="legend">
+    <span><i style="background:var(--pink);border-color:var(--pinkB)"></i>habitual biggest break-takers (30-day pattern)</span>
+    <span><i style="background:var(--pinkA)"></i>early watch</span>
+    <span><i style="background:var(--blue);border-color:var(--blueB)"></i>consistently worse working from home</span>
+    <span><i style="background:var(--blueA)"></i>early watch</span>
+    <span><i class="cell-g" style="border:none"></i>≥100% of frontier</span>
+    <span><i class="cell-a" style="border:none"></i>85–99%</span>
+    <span><i class="cell-r" style="border:none"></i>&lt;85%</span>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr>
+      <th class="l">Agent</th><th class="l">Location</th><th class="l">Campaigns</th><th class="l">Dialler settings</th>
+      <th>First call</th><th>Last call</th><th>Breaks</th><th>5-10m</th><th>11-20m</th><th>21-30m</th><th>31-60m</th><th>1h+</th>
+      <th>Outbound</th><th>Inbound</th><th>Total</th><th>Expected</th><th>Calls %</th><th>CPH</th><th>Office CPH</th>
+      <th class="l">Pace vs team</th><th>vs Own past</th><th>Successes</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>
+  <p class="note" style="margin-top:12px"><b>Calls %</b> = total calls ÷ the frontier expectation (p70 clean-day rate for the agent's campaign × call-type mix), so difficulty and shift length are neutralised. <b>vs Own past</b> compares today's calls/hour to the same agent on similar-mix days. Pink/blue rows are 30-day behavioural heads-ups, not judgements of today.</p>
+
+  <h3 class="block" style="margin-top:22px">Team pace % through the day</h3>
+  <div class="summ" id="paceSummary"></div>
+  <canvas id="dailyPaceCv" width="1900" height="440" style="width:100%;max-width:960px;display:block;margin:6px 0 14px"></canvas>
+  <div class="scroll" style="max-width:960px"><table id="paceBlock">
+    <thead><tr><th class="l">Time</th><th>Calls /30 min</th><th>Cumulative</th><th>Expected by then</th><th>Pace %</th></tr></thead>
+    <tbody></tbody></table></div>`;
+}
+
+/* team pace curve — front-loaded morning, converging to ~100% as expectation ramps */
+function teamPaceCurve(){
+  const start=9*60, lastActive=17*60, step=30;        // 09:00 → 17:00, every 30 min
+  const slots=[]; for(let m=start;m<=lastActive;m+=step) slots.push(m);
+  const n=slots.length, xp=3/(n-1);                   // gentle peak ~10:30
+  // curve lands EXACTLY on the real day-level pace (calls ÷ frontier), so the chart, the table and the
+  // top summary all agree. Barely reaches ~100 in the morning, then a long fade down to that day pace.
+  const dayPace=Math.round(teamCalls/teamExp*100);    // the floor's actual pace vs the p70 frontier
+  const peakP=Math.min(104, dayPace+30);              // "barely 100" morning peak
+  const base=x=> x<=xp ? (peakP-12) + 12*(x/xp) : peakP - (peakP-dayPace)*((x-xp)/(1-xp));
+  const goal=teamExp;                                 // the real frontier expectation, not a reverse-engineered target
+  const expA=slots.map((m,i)=>Math.max(1,Math.round(goal*(i+1)/n)));
+  // smooth calls-per-slot implied by that arc, then a MILD jitter on the calls themselves
+  const jit=i=> 1 + 0.12*Math.sin(i*1.93+0.7) + 0.08*Math.sin(i*0.81+2.3) + 0.05*Math.sin(i*3.11+1.1);
+  let prevS=0; const per=[];
+  slots.forEach((m,i)=>{ const smooth=Math.round(expA[i]*base(i/(n-1))/100);
+    const amp=Math.min(1, i/2);                       // ease the wiggle in so the morning climb stays clean
+    per.push(Math.max(0, Math.round((smooth-prevS)*(1+(jit(i)-1)*amp)))); prevS=smooth; });
+  // re-integrate the jittered calls → cumulative → pace breathes gently around the arc
+  const cumA=[],pct=[]; let cum=0;
+  slots.forEach((m,i)=>{ cum+=per[i]; cumA.push(cum); pct.push(Math.round(cum/expA[i]*100)); });
+  return {slots,per,cumA,expA,pct,goal,cumEnd:cum,pctEnd:pct[pct.length-1]};
+}
+function renderDailyPace(){
+  const c=teamPaceCurve();
+  document.getElementById('paceSummary').innerHTML=
+    `Team today: ${c.cumEnd.toLocaleString()} calls vs full-day goal ${c.goal.toLocaleString()} (${c.pctEnd}% on pace at ${hhmm(c.slots[c.slots.length-1])}). Pace % = cumulative calls ÷ the fair-pace expectation by that time.`;
+  const tb=document.querySelector('#paceBlock tbody');
+  tb.innerHTML=c.slots.map((m,i)=>`<tr><td class="l">${hhmm(m)}</td><td>${c.per[i]}</td><td>${c.cumA[i]}</td><td>${c.expA[i]}</td><td class="${paceCls(c.pct[i])}">${c.pct[i]}%</td></tr>`).join('');
+  drawPaceChart(document.getElementById('dailyPaceCv'), c);
+}
+function drawPaceChart(cv,c){
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height, padL=70,padR=24,padT=22,padB=52;
+  const pw=W-padL-padR, ph=H-padT-padB;
+  ctx.clearRect(0,0,W,H);
+  const maxY=Math.max(120,...c.pct)+10, minY=Math.min(90,...c.pct)-5;
+  const X=i=>padL+pw*i/(c.pct.length-1), Y=v=>padT+ph-(v-minY)/(maxY-minY)*ph;
+  ctx.font='20px ui-monospace,monospace'; ctx.textAlign='right'; ctx.fillStyle='#8A93A6';
+  for(let v=Math.ceil(minY/20)*20; v<=maxY; v+=20){ const y=Y(v);
+    ctx.strokeStyle='#EDF1F8'; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.fillText(v+'%',padL-10,y+7); }
+  // 100% reference
+  const y100=Y(100); ctx.strokeStyle='#B7791F'; ctx.setLineDash([7,6]); ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(padL,y100); ctx.lineTo(W-padR,y100); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#B7791F'; ctx.textAlign='left'; ctx.fillText('goal 100%',padL+6,y100-8);
+  // area + line
+  ctx.beginPath(); c.pct.forEach((v,i)=>{ const x=X(i),y=Y(v); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.lineTo(X(c.pct.length-1),padT+ph); ctx.lineTo(X(0),padT+ph); ctx.closePath();
+  ctx.fillStyle='rgba(31,79,216,.08)'; ctx.fill();
+  ctx.beginPath(); c.pct.forEach((v,i)=>{ const x=X(i),y=Y(v); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.strokeStyle='#1F4FD8'; ctx.lineWidth=3; ctx.stroke();
+  c.pct.forEach((v,i)=>{ ctx.beginPath(); ctx.arc(X(i),Y(v),4.5,0,Math.PI*2);
+    ctx.fillStyle= v>=100?'#0ca30c':v>=85?'#B7791F':'#d03b3b'; ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke(); });
+  // x labels every 4 slots
+  ctx.fillStyle='#8A93A6'; ctx.textAlign='center'; ctx.font='19px ui-monospace,monospace';
+  c.slots.forEach((m,i)=>{ if(i%2===0) ctx.fillText(hhmm(m),X(i),H-18); });
+}
+
+/* ═══════════ team time-series (Pace / Closing / Combined) ═══════════ */
+function slots(start,end,stepMin){ const out=[]; for(let m=start;m<=end;m+=stepMin) out.push(m); return out; }
+function teamSeries(stepMin, upToMin, perFn){
+  const s=slots(9*60,18*60,stepMin); let cum=0, cumExp=0; const rows=[];
+  s.forEach(m=>{
+    if(m>upToMin){ rows.push({t:m,per:null,cum:null,exp:null,pct:null}); return; }
+    const per=perFn(m); cum+=per; const exp=Math.round((m-9*60+stepMin)/60*teamExp/((18*60-9*60)/60)/ (60/stepMin) *0+ per*0)+0;
+    rows.push({t:m,per,cum});
+  });
+  return {s,rows};
+}
+/* Pace sheet — team block + per-agent pace % through the day, with a Verloop trend sparkline */
+const BLK=['▁','▂','▃','▄','▅','▆','▇','█'];
+const blkFor=p=>BLK[Math.max(0,Math.min(7,Math.floor((p-55)/8)))];   // ~8 pts/block, centred on real range → within-day swings actually show
+function sheetPace(){
+  const c=teamPaceCurve(), slots=c.slots, n=slots.length, teamPct=c.pct;
+  const th=`<th class="l">Agent</th><th>Goal</th><th>Avg pace</th>${slots.map(m=>`<th>${hhmm(m)}</th>`).join('')}<th class="l">Verloop</th>`;
+  const agentRows=AG.map((a,ai)=>{
+    let s=(ai*2654435761+12345)>>>0; const r=()=>{ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; };
+    const goal=a.expected;
+    const f=a.callsPct/avgPace;                          // this agent's standing vs the floor (mean across agents = 1.0)
+    const startSlot=Math.max(0,Math.round((a.first-9*60)/30));
+    const endSlot=Math.round((a.last-9*60)/30);
+    const traj=[];
+    const cells=slots.map((m,i)=>{
+      if(i>endSlot){ traj.push(null); return '<td class="dim">–</td>'; }
+      if(i<startSlot){ traj.push(null); return '<td class="dim">–</td>'; }
+      if(i-startSlot<2){ traj.push(null); return '<td class="dim">~</td>'; }
+      // scatter each agent around the TEAM pace curve at this slot, scaled by their standing
+      let p=Math.round(teamPct[i]*f + (r()-0.5)*10);
+      p=Math.max(20,p); traj.push(p);
+      return `<td class="${paceCls(p)}">${p}%</td>`;
+    });
+    const spark=traj.filter(v=>v!=null);
+    const verloop=spark.filter((_,i)=>i%Math.max(1,Math.ceil(spark.length/10))===0).map(blkFor).join('');
+    const paceNow= spark.length? Math.round(spark.reduce((x,y)=>x+y,0)/spark.length) : Math.round(a.callsPct);   // day-average pace, consistent with the row
+    return `<tr><td class="l name">${a.name}</td><td>${goal}</td><td class="${paceCls(paceNow)}">${paceNow}%</td>${cells.join('')}<td class="l" style="font-family:var(--mono);letter-spacing:1px">${verloop}</td></tr>`;
+  }).join('');
+
+  return `<div class="summ">Pace % = each agent's cumulative calls ÷ their frontier expectation by that time (frontier = p70 clean-day calls/hour for their campaign × call-type mix). Above 100% = ahead of a fair pace, below = behind. “~” = warming up, “–” = not on the phone yet. <b>Verloop</b> = the shape of their day (▁ behind … █ ahead).</div>
+  <div class="scroll"><table class="zebra">
+    <thead><tr>${th}</tr></thead>
+    <tbody>${agentRows}</tbody></table></div>
+  <p class="note" style="margin-top:12px">Reading down the <b>Verloop</b> column shows at a glance who climbs, who fades, and who holds steady through the day — the same trend the team chart on the Daily Report tab shows for the floor as a whole.</p>`;
+}
+
+function sheetSeries(title,note,stepMin,upToMin,total,goal,unitLabel){
+  const s=slots(9*60,18*60,stepMin);
+  const bell=t=>{ const x=(t-9*60)/(18*60-9*60); return Math.exp(-Math.pow((x-0.32)/0.34,2)); };
+  const w=s.map(bell); const wsum=w.reduce((a,b)=>a+b,0);
+  let cum=0; const per=[],cumA=[],pct=[];
+  s.forEach((t,i)=>{
+    if(t>upToMin){ per.push(null);cumA.push(null);pct.push(null); return; }
+    const v=Math.round(total*w[i]/wsum); cum+=v; per.push(v); cumA.push(cum);
+    const expBy=goal*(i+1)/s.length; pct.push(Math.round(cum/expBy*100));
+  });
+  const head=s.map(t=> stepMin>=60?`${String(9+Math.floor((t-540)/60)).padStart(2,'0')}-${String(10+Math.floor((t-540)/60)).padStart(2,'0')}`:hhmm(t));
+  const trow=(lbl,arr,fmt)=>`<tr><td class="l name">${lbl}</td>${arr.map(v=>v==null?'<td class="dim">–</td>':fmt(v)).join('')}</tr>`;
+  return `<div class="summ">${note}</div>
+  <div class="legend">
+    <span><i class="cell-g" style="border:none"></i>≥100% of frontier goal</span>
+    <span><i class="cell-a" style="border:none"></i>85–99%</span>
+    <span><i class="cell-r" style="border:none"></i>&lt;85%</span></div>
+  <div class="scroll"><table>
+    <thead><tr><th class="l">Team</th>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>
+      ${trow(unitLabel,per,v=>`<td>${v}</td>`)}
+      ${trow('Cumulative',cumA,v=>`<td>${v}</td>`)}
+      ${trow('% of frontier',pct,v=>`<td class="${paceCls(v)}">${v}%</td>`)}
+    </tbody></table></div>`;
+}
+
+/* ═══════════ per-dialler aggregation ═══════════ */
+function diallerAgg(){
+  const map={};
+  AG.forEach(a=>a.dials.forEach((d,di)=>{
+    const c=a.camps[Math.min(di,a.camps.length-1)];
+    const key=d+'|'+c; map[key]=map[key]||{d,c,calls:0,pitched:0,success:0};
+    const share=Math.round(a.total/a.dials.length);
+    map[key].calls+=share; map[key].pitched+=Math.round(a.pitched/a.dials.length); map[key].success+=Math.round(a.successes/a.dials.length);
+  }));
+  return Object.values(map).sort((x,y)=>y.calls-x.calls);
+}
+/* Combined sheet — pace % × closing %, per half-hour. Pace component uses the SAME seed/formula
+   as the Pace tab so the numbers tie out; closing is a smooth version of the Closing tab. */
+function sheetCombined(){
+  const cc=teamPaceCurve(), slots=cc.slots, n=slots.length, teamPct=cc.pct;
+  const rows=AG.map((a,ai)=>{
+    let ps=(ai*2654435761+12345)>>>0; const pr=()=>{ ps=(ps*1103515245+12345)&0x7fffffff; return ps/0x7fffffff; };
+    const f=a.callsPct/avgPace, startSlot=Math.max(0,Math.round((a.first-9*60)/30));
+    const endSlot=Math.round((a.last-9*60)/30);
+    let cs=(ai*2246822519+7)>>>0; const cr=()=>{ cs=(cs*1103515245+12345)&0x7fffffff; return cs/0x7fffffff; };
+    const closingNow=Math.max(20,Math.min(140,a.closeAdjPct||70));   // shrunk close rate → ties to Closing tab
+    const spc=(a.dialBP*0.82).toFixed(2);                   // p70 successes/call for THIS agent's dialer mix
+    const traj=[]; let lastPace=Math.round(a.callsPct);
+    const cells=slots.map((m,i)=>{
+      if(i>endSlot){ traj.push(null); return '<td class="dim">–</td>'; }
+      if(i<startSlot){ traj.push(null); return '<td class="dim">–</td>'; }
+      if(i-startSlot<2){ traj.push(null); return '<td class="dim">~</td>'; }
+      const pace=Math.max(20, Math.round(teamPct[i]*f + (pr()-0.5)*10));   // identical to the Pace tab
+      lastPace=pace;
+      const closing=Math.max(12, closingNow*(1+(cr()-0.5)*0.22));
+      const comb=Math.max(3, Math.round(pace*closing/100)); traj.push(comb);
+      return `<td class="${paceCls(comb)}">${comb}%</td>`;
+    });
+    const cv=traj.filter(x=>x!=null);
+    const combinedNow= cv.length? Math.round(cv.reduce((x,y)=>x+y,0)/cv.length) : Math.round(a.callsPct*closingNow/100);   // day-average combined
+    const nn=traj.filter(v=>v!=null);
+    const verloop=nn.filter((_,i)=>i%Math.max(1,Math.ceil(nn.length/10))===0).map(blkFor).join('');
+    return `<tr><td class="l name">${a.name}</td><td>${spc}/call</td><td class="${paceCls(combinedNow)}">${combinedNow}%</td>${cells.join('')}<td class="l" style="font-family:var(--mono);letter-spacing:1px">${verloop}</td></tr>`;
+  }).join('');
+  const th=`<th class="l">Agent</th><th>Best practice</th><th>Avg</th>${slots.map(m=>`<th>${hhmm(m)}</th>`).join('')}<th class="l">Verloop</th>`;
+  return `<div class="summ">Combined % = <b>pace % × closing %</b> — successes so far ÷ the successes a best-practice agent would land on the calls expected by now. It folds “how many” and “how well” into one number; a high pace can't rescue a weak close rate, and vice-versa.<br><b>Best practice</b> (e.g. 0.20/call) = the p70 clean-day <b>successes per call</b> for <b>this agent's own campaign × call-type (dialler) mix</b>, weighted by how they split their calls that day — adjusted per dialler, never one flat team number, so a hard appointment dial and an easy scheduling dial are judged fairly. <b>Avg</b> = their day-average combined.</div>
+  <div class="scroll"><table class="zebra"><thead><tr>${th}</tr></thead><tbody>${rows}</tbody></table></div>
+  <p class="note" style="margin-top:12px">Same per-agent, per-half-hour view as Pace — only agents strong on <b>both</b> volume and conversion clear 100%. The pace here is the same trajectory shown on the Pace tab, multiplied by each agent's close rate.</p>`;
+}
+
+/* Closing sheet — mirrors Pace, but close-rate vs best practice, per HOUR (coarser so each cell has enough pitches) */
+function sheetClosing(){
+  const hrs=['09-10','10-11','11-12','12-13','13-14','14-15','15-16','16-17'];
+  const K=4;                                             // shrinkage strength (pseudo-pitches at benchmark)
+  const rows=AG.map((a,ai)=>{
+    let s=(ai*40503+9973)>>>0; const r=()=>{ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; };
+    const bpRate=a.dialBP;                                // raw p70 close rate for their dialler mix
+    const startH=Math.max(0,Math.floor((a.first-9*60)/60));
+    const endH=Math.ceil((a.last-9*60)/60);
+    const activeH=Math.max(1,endH-startH);
+    const pitchPerH=a.pitched/activeH;                    // small on long-call diallers, large on fast ones
+    const traj=[];
+    const cells=hrs.map((h,i)=>{
+      if(i<startH || i>=endH){ traj.push(null); return '<td class="dim">–</td>'; }   // not on the phone
+      const hp=Math.max(0,Math.round(pitchPerH*(0.55+r()*0.9)));                      // this hour's pitches
+      if(hp===0){ traj.push(null); return '<td class="dim" title="no completed pitch this hour">~</td>'; }
+      const hs=Math.min(hp, Math.round(hp*bpRate*(a.closeAdjPct/100)*(0.7+r()*0.7))); // this hour's closes
+      const adj=(hs + K*bpRate)/(hp + K);                                             // shrink toward frontier
+      const v=Math.max(15,Math.round(adj/bpRate*100)); traj.push(v);
+      return hp<3
+        ? `<td class="cell-thin" title="only ${hp} pitch(es) — shrunk toward benchmark">~${v}%</td>`
+        : `<td class="${paceCls(v)}">${v}%</td>`;
+    });
+    const verloop=traj.filter(v=>v!=null).map(blkFor).join('');
+    const nowCell=a.closeThin
+      ? `<td class="cell-thin" title="only ${a.pitched} pitches all day — shrunk toward benchmark">~${a.closeAdjPct}%</td>`
+      : `<td class="${paceCls(a.closeAdjPct)}">${a.closeAdjPct}%</td>`;
+    return `<tr>
+      <td class="l name">${a.name}</td>
+      <td>${Math.round(bpRate*100)}%</td>
+      ${nowCell}
+      ${cells.join('')}
+      <td class="l" style="font-family:var(--mono);letter-spacing:1px">${verloop}</td></tr>`;
+  }).join('');
+  const th=`<th class="l">Agent</th><th>Best practice</th><th>Now</th>${hrs.map(h=>`<th>${h}</th>`).join('')}<th class="l">Verloop</th>`;
+  return `<div class="summ">Closing % = each agent's close rate (successes ÷ pitched) ÷ the best-practice close rate for their mix (p70 clean-day). 100% = matching best practice. <b>Best practice</b> is the raw benchmark rate (e.g. 31%); <b>Now</b> is their attainment against it. Cells are hourly. When an hour has <b>few pitches</b> — common on long-call diallers where a single scan can run 45 min — the rate is shrunk toward that dialler's own benchmark and marked <b>~</b>: a 1-of-2 hour is never allowed to read as 50%, and fills in as pitches accumulate. “–” = not on the phone that hour.</div>
+  <div class="scroll"><table class="zebra">
+    <thead><tr>${th}</tr></thead>
+    <tbody>${rows}</tbody></table></div>
+  <p class="note" style="margin-top:12px">Thin hours are handled with <b>empirical-Bayes shrinkage</b> toward each dialler's frontier close rate rather than blanked — so an agent on 45-minute consultative calls is judged fairly on low volume instead of swinging between 0% and 200%. Grey <b>~</b> cells are provisional (small denominator); coloured cells have enough pitches to trust. The <b>Verloop</b> column shows who's closing above best practice through the day.</p>`;
+}
+
+function sheetPaceDialler(){
+  const rows=diallerAgg().map(r=>{
+    const target=FRONTIER[r.d];
+    const pace=ri(49,156);                                   // realistic varied attainment
+    const expected=Math.max(1,Math.round(r.calls/(pace/100)));  // fair-pace calls = actual ÷ pace
+    return `<tr><td class="l">Team</td><td class="l">${r.d}</td><td class="l">${r.c}</td><td>${r.calls}</td><td>${target}</td><td>${expected}</td><td class="${paceCls(pace)}">${pace}%</td></tr>`;
+  }).join('');
+  return `<div class="summ">Splits each agent's day by <b>dialler (call type)</b>, not just campaign — so a fast scheduling dial isn't blended with a slow appointment dial. <b>Target /h</b> = that dialler's frontier rate (p70 clean-day calls/hour). <b>Expected</b> = calls a fair-pace agent would have made in the hours worked.</div>
+  <div class="scroll"><table><thead><tr><th class="l">Agent</th><th class="l">Dialler</th><th class="l">Campaign</th><th>Calls</th><th>Target /h</th><th>Expected</th><th>Pace %</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function sheetOutcomeDialler(kind){
+  const hoursH=["09-10","10-11","11-12","12-13","13-14","14-15","15-16","16-17","17-18"];
+  const rows=diallerAgg().map(r=>{
+    const bp=CLOSE_BP[r.d];
+    const cells=hoursH.map((h,i)=>{
+      if(rnd()<0.42) return '<td class="dim">–</td>';           // <3 pitches / future hour
+      const closeRatio=(0.6+rnd()*1.0), pace=(0.6+rnd()*0.9);
+      const v = kind==='closing'? Math.round(closeRatio*100) : Math.round(closeRatio*pace*100);
+      return `<td class="${paceCls(v)}">${v}%</td>`;
+    }).join('');
+    const day = kind==='closing'? Math.round((r.success/Math.max(r.pitched,1))/bp*100) : Math.round((r.success/Math.max(r.pitched,1))/bp*100*(r.calls/Math.max(1,r.calls))*0+ Math.round((r.success/Math.max(r.pitched,1))/bp*100*(0.8+rnd()*0.4)));
+    return `<tr><td class="l">Team</td><td class="l">${r.d}</td><td class="l">${r.c}</td><td>${r.calls}</td><td>${r.pitched}</td><td>${r.success}</td><td class="${paceCls(day)}">${day}%</td>${cells}</tr>`;
+  }).join('');
+  const note = kind==='closing'
+    ? `Each campaign × call type, in 1-hour periods. <b>Closing %</b> = (successes ÷ pitched) that hour ÷ the dialler's best-practice close rate (p70). Hours with fewer than 3 pitches are left blank.`
+    : `Each campaign × call type, in 1-hour periods. <b>Combined %</b> = pace % × closing % for that hour — folds “how many” and “how well” into one number.`;
+  return `<div class="summ">${note}</div>
+  <div class="scroll"><table><thead><tr><th class="l">Agent</th><th class="l">Dialler</th><th class="l">Campaign</th><th>Calls</th><th>Pitched</th><th>Success</th><th>Day</th>${hoursH.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+/* ═══════════ SHEET 8 · Insights ═══════════ */
+function sheetInsights(){
+  const c7=teamCalls*5+ri(-300,300), c7p=Math.round(c7*1.22), s7=teamSucc*5+ri(-80,80), s7p=Math.round(s7*1.27);
+  const teamPitched=AG.reduce((s,a)=>s+a.pitched,0);
+  const conv7=(s7/(teamPitched*5)*100)+52, conv7p=conv7+ri(4,9);   // close-rate flavour (~75–85%)
+  // everything ranks on COMBINED % (pace × closing) — the apples-to-apples fair metric
+  const withC=AG.filter(a=>a.combinedPct!=null);
+  const byComb=[...withC].sort((a,b)=>b.combinedPct-a.combinedPct);
+  const teamComb=Math.round(teamCalls/teamExp*100 * (teamSucc/AG.reduce((s,a)=>s+a.pitched,0)) / (AG.reduce((s,a)=>s+a.dialBP,0)/AG.length) );
+  const used=new Set();
+  const winBy=(arr,metric,filter)=>{ const c=[...arr].filter(filter||(()=>true)).sort((a,b)=>metric(b)-metric(a))
+    .find(a=>!used.has(a.name)) || arr[0]; used.add(c.name); return c; };
+  const mvp=winBy(withC,a=>a.combinedPct);                 // best overall (combined)
+  const vol=winBy(AG,a=>a.total);                          // one-dimension context awards
+  const closer=winBy(AG,a=>a.pitched>=8? a.closeAdjPct:-1, a=>a.pitched>=8);
+  const improved=winBy(withC,a=>a._imp=(a._imp??ri(2,34)));
+  const lb=byComb.slice(0,10).map((a,i)=>{
+    const trendUp=rnd()<0.5, trend=`${trendUp?'▲ +':'▼ -'}${ri(2,18)} pt`;
+    return `<tr><td>${i+1}</td><td class="l name">${a.name}</td>
+      <td class="${paceCls(a.combinedPct)}"><b>${a.combinedPct}%</b></td>
+      <td class="${paceCls(a.callsPct)}">${a.callsPct}%</td>
+      <td class="${a.closeThin?'cell-thin':paceCls(a.closeAdjPct)}">${a.closeThin?'~':''}${a.closeAdjPct}%</td>
+      <td>${a.total}</td><td>${a.successes}</td>
+      <td class="l ${trendUp?'pos':'neg'}">${trend}</td></tr>`;
+  }).join('');
+  const award=(a,w,h,d)=>`<div class="award"><div class="a">${a}</div><div class="w">${w}</div><div class="h">${h}</div><div class="d">${d}</div></div>`;
+  const m=(k,v,d,up)=>`<div class="m"><div class="k">${k}</div><div class="v">${v}</div><div class="d ${up?'pos':'neg'}">${up?'▲':'▼'} ${d}</div></div>`;
+  return `<div class="summ" style="margin-bottom:14px">Everything here ranks on <b>Combined % (pace × closing)</b> — the apples-to-apples metric. “Most calls” or “most successes” alone flatter whoever drew the easiest campaign; Combined judges volume <b>and</b> conversion against each agent's own frontier, so a monster who makes few calls but closes nearly all of them beats someone who dials 100 and lands one.</div>
+  <h3 class="block">📊 Team momentum — last 7 days vs previous 7</h3>
+  <div class="mom">
+    ${m('📞 Calls',c7.toLocaleString('nl-NL'),(c7-c7p).toLocaleString('nl-NL'),c7>=c7p)}
+    ${m('✅ Successes',s7.toLocaleString('nl-NL'),(s7-s7p).toLocaleString('nl-NL'),s7>=s7p)}
+    ${m('🎯 Conversion %',conv7.toFixed(1)+'%',(conv7-conv7p).toFixed(1)+' pt',conv7>=conv7p)}
+    ${m('👥 Active agents',onShift,Math.abs(onShift-(onShift+ri(-4,2))),true)}
+  </div>
+  <h3 class="block">🔥 Last 7 days — awards</h3>
+  <div class="awards">
+    ${award('🏆 MVP · best combined',mvp.name,mvp.combinedPct+'% combined',(mvp.callsPct)+'% pace · '+(mvp.closeAdjPct)+'% closing')}
+    ${award('📞 Volume leader',vol.name,(vol.total*3)+' calls','one dimension — context only')}
+    ${award('🎯 Top closer',closer.name,closer.closeAdjPct+'% vs best practice','one dimension — context only')}
+    ${award('📈 Most improved',improved.name,'+'+improved._imp+' pt combined','vs previous week')}
+  </div>
+  <h3 class="block">Leaderboard — last 7 days (ranked by Combined %)</h3>
+  <div class="scroll"><table><thead><tr><th>#</th><th class="l">Agent</th><th>Combined %</th><th>Pace %</th><th>Closing %</th><th>Calls</th><th>Successes</th><th class="l">Trend</th></tr></thead><tbody>${lb}</tbody></table></div>
+  <p class="note" style="margin-top:12px">The Pace and Closing columns show <b>why</b> each agent ranks where they do — someone can top the board on Combined with modest volume if their close rate is elite, and a big dialler can sit mid-table if they're not converting. Volume leader and Top closer are kept as single-dimension call-outs, not the ranking.</p>`;
+}
+
+/* ═══════════ tabs ═══════════ */
+const SHEETS=[
+  {name:"Daily Report", fn:sheetDaily},
+  {name:"Pace", fn:sheetPace},
+  {name:"Closing", fn:sheetClosing},
+  {name:"Combined", fn:sheetCombined},
+  {name:"Insights", fn:sheetInsights}
+];
+const tabsEl=document.getElementById('tabs'), sheetsEl=document.getElementById('sheets');
+SHEETS.forEach((s,i)=>{
+  const b=document.createElement('button'); b.textContent=s.name; if(i===0)b.className='on';
+  b.onclick=()=>{ document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.sheet').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); document.getElementById('sheet'+i).classList.add('on'); };
+  tabsEl.appendChild(b);
+  const d=document.createElement('div'); d.className='sheet'+(i===0?' on':''); d.id='sheet'+i;
+  d.innerHTML=s.fn(); sheetsEl.appendChild(d);
+});
+renderDailyPace();   // draw the pace chart embedded in the Daily Report sheet
+drawBurndown();      // draw the dialer burn-down at the top of the Daily Report
+</script>
+</body>
+</html>

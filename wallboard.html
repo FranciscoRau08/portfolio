@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent TV Board — recreation</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%230a0a0c%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27monospace%27 font-size=%2734%27 font-weight=%27bold%27 fill=%27%23f5f5f7%27 text-anchor=%27middle%27%3EF%3C/text%3E%3Crect x=%2744%27 y=%2738%27 width=%278%27 height=%2712%27 fill=%27%23ff3b47%27/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#081120; --panel:#0e2038; --panel2:#0b1a30; --pill:#15294a; --line:#1e3a5f; --line2:#274d78;
+    --ink:#ffffff; --ink2:#b9c6da; --muted:#6f88a8;
+    --gold:#f3c552; --cyan:#3fb6f0; --green:#3ddc84; --orange:#f59a3c;
+    --box-navy:#132844; --box-green:#12603a; --box-red:#6e2130; --box-blue:#1a3d74;
+    --c0:#e0729a; --c1:#9a8cf0; --c2:#2fbf95; --c3:#f0925d;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(1400px 800px at 60% -20%, #10233f, var(--bg));
+    color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    height:100vh;overflow:hidden;display:grid;grid-template-rows:auto auto auto 1fr;gap:16px;padding:18px 20px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .disc{position:fixed;bottom:5px;left:50%;transform:translateX(-50%);font-size:10px;color:#3d4f68;z-index:5}
+
+  /* header */
+  header{display:flex;align-items:center;gap:16px}
+  header h1{font-size:30px;font-weight:800;letter-spacing:-.01em}
+  .supv{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#ffb4bd;
+        background:rgba(198,43,63,.18);border:1px solid #6e2233;border-radius:8px;padding:3px 10px;vertical-align:middle;margin-left:8px}
+  .spacer{flex:1}
+  .chip{display:inline-flex;align-items:center;gap:8px;background:#10233f;border:1px solid var(--line);
+        border-radius:11px;padding:8px 15px;font-size:15px;font-weight:700;color:var(--ink2)}
+  .chip.live{color:var(--green);border-color:#1c5a3a;background:#0d2a1e}
+  .chip.live i{width:11px;height:11px;border-radius:50%;background:var(--green);animation:pulse 1.7s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(61,220,132,.5)}70%{box-shadow:0 0 0 10px rgba(61,220,132,0)}100%{box-shadow:0 0 0 0 rgba(61,220,132,0)}}
+  .chip.logout{color:#ff6f7f;border-color:#5f2130;background:#2a1218}
+  #clock{font-variant-numeric:tabular-nums;color:var(--ink)}
+
+  /* KPI row */
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+  .kpi{border-radius:18px;padding:14px 20px;min-height:118px;display:flex;flex-direction:column;justify-content:center;
+       border:1px solid rgba(255,255,255,.06);position:relative}
+  .kpi .n{font-size:52px;font-weight:800;line-height:.9;font-variant-numeric:tabular-nums}
+  .kpi .l{font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:10px;color:rgba(255,255,255,.82)}
+  .kpi .ic{font-size:24px;opacity:.85;margin-bottom:2px}
+  .kpi.navy{background:linear-gradient(160deg,#16294a,var(--box-navy))}
+  .kpi.green{background:linear-gradient(160deg,#12703f,var(--box-green))}
+  .kpi.red{background:linear-gradient(160deg,#7c2635,var(--box-red))}
+  .kpi.blue{background:linear-gradient(160deg,#1e4788,var(--box-blue))}
+
+  /* body 3 columns */
+  .body{display:grid;grid-template-columns:270px 1fr 340px;grid-template-rows:minmax(0,1fr);gap:16px;min-height:0}
+  .col{display:flex;flex-direction:column;gap:16px;min-height:0}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;
+        padding:16px 18px;min-height:0;display:flex;flex-direction:column}
+  .card h2{font-size:16px;font-weight:800;letter-spacing:.02em;display:flex;align-items:center;gap:9px;margin-bottom:12px}
+  .card h2 .sub{color:var(--muted);font-weight:700;font-size:15px}
+  .card h2 .dots{margin-left:auto;display:flex;gap:6px}
+  .card h2 .dots i{width:20px;height:5px;border-radius:3px;background:#28456e}
+  .card h2 .dots i.on{background:var(--orange)}
+
+  /* left: active calls + missed */
+  .cyan{color:var(--cyan)}
+  .empty{color:var(--muted);text-align:center;padding:26px 0;font-size:15px}
+  .qrow{display:flex;flex-direction:column;gap:6px;padding:11px 2px;border-bottom:1px solid var(--line)}
+  .qrow:last-child{border-bottom:none}
+  .qrow .qt{display:flex;align-items:center;gap:9px}
+  .qrow .qdot{width:11px;height:11px;border-radius:3px;flex:none}
+  .qrow .qn{font-weight:700;font-size:14.5px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qrow .act{font-size:10px;color:var(--gold);font-weight:700;letter-spacing:.04em}
+  .qrow .qstats{display:flex;gap:16px;font-size:12.5px;font-family:var(--mono);margin-left:20px}
+  .qrow .qstats .w{color:var(--gold);font-weight:700} .qrow .qstats .w.hot{color:#ff8a97}
+  .qrow .qstats .g{color:var(--cyan)}
+  .qrow .qstats .qmiss{color:#ff8a97;margin-left:auto}
+
+  /* incoming-call banner (between the KPIs and the body) */
+  .banner{background:linear-gradient(180deg,#0e2038,#0b1a30);border:1px solid var(--line);border-radius:14px;
+          padding:9px 18px;display:flex;align-items:center;gap:20px;min-height:50px;overflow:hidden}
+  .banner.active{border-color:#8a1f2c;background:linear-gradient(180deg,#2a1119,#1a0d13);animation:bglow 1s steps(1) infinite}
+  @keyframes bglow{50%{border-color:#e0455a;background:linear-gradient(180deg,#3a141d,#220f16)}}
+  .banner .bidle{color:var(--muted);font-size:14px;display:flex;align-items:center;gap:9px}
+  .boffer{display:flex;align-items:center;gap:12px;font-size:15px}
+  .boffer .bph{color:#ff6f7f;font-size:18px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .boffer .bcamp{font-weight:800}
+  .boffer .btag{font-size:11px;font-weight:800;letter-spacing:.12em;color:#ffb4bd;background:rgba(198,43,63,.22);
+        border:1px solid #6e2233;border-radius:6px;padding:2px 8px}
+  .boffer .bwait{color:var(--ink2);font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+  .boffer .barrow{color:var(--muted)}
+  .boffer .bagent{font-weight:800;color:var(--gold)}
+  .boffer + .boffer{border-left:1px solid #5a2233;padding-left:20px}
+  .qrow .qbar{height:6px;background:#12233d;border-radius:3px;overflow:hidden;margin-left:20px}
+  .qrow .qbar>i{display:block;height:100%;border-radius:3px;transition:width .5s}
+
+  .missed{background:linear-gradient(180deg,#2a1620,#20111a);border:1px solid #5a2233;border-radius:18px;padding:16px 18px;
+          display:flex;align-items:center;gap:16px}
+  .missed .badge{width:56px;height:56px;border-radius:50%;background:#4a1a26;display:flex;align-items:center;justify-content:center;
+          font-size:26px;color:#ff6f7f;flex:none;border:1px solid #6e2636}
+  .missed .tx{flex:1}
+  .missed .tx .l{font-size:14px;font-weight:800;color:var(--gold);letter-spacing:.03em;line-height:1.15}
+  .missed .tx .s{font-size:11.5px;color:#c98ea0;font-family:var(--mono);margin-top:4px}
+  .missed .big{font-size:46px;font-weight:800;color:#ff8a97;font-variant-numeric:tabular-nums}
+
+  /* center: agent status grouped */
+  .status{overflow:hidden}
+  .statusScroll{overflow:hidden;display:flex;flex-direction:column;gap:14px;flex:1;justify-content:space-between}
+  .grp .gh{font-size:14px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:9px;display:flex;align-items:center;gap:8px}
+  .grp .gh .cnt{background:#1b355a;color:var(--ink2);border-radius:20px;padding:1px 10px;font-size:12px;font-weight:700}
+  .gh.beschikbaar{color:var(--green)} .gh.ringing{color:var(--gold)} .gh.gesprek{color:#5aa0ff} .gh.pauze{color:#ff6f7f} .gh.dnd{color:#d64d63}
+  .pempty{color:var(--muted);font-size:12.5px;opacity:.55;font-style:italic}
+  .pills{display:flex;flex-wrap:wrap;gap:9px}
+  .pillA{display:flex;align-items:center;gap:10px;background:#131519;border:1px solid #2b2e37;border-radius:30px;
+         padding:7px 15px 7px 8px;min-width:0;position:relative}
+  /* supervisor-only: red count of inbound calls passed to a teammate */
+  .passbadge{position:absolute;top:-7px;left:-7px;min-width:21px;height:21px;border-radius:11px;background:#c62b3f;color:#fff;
+        font-size:11px;font-weight:800;font-family:var(--mono);display:flex;align-items:center;justify-content:center;
+        padding:0 5px;border:2px solid #0e2038;box-shadow:0 1px 5px rgba(0,0,0,.45)}
+  /* supervisor-only: available > 5 min idle flag */
+  .pillA.idle{border-color:#c62b3f;box-shadow:0 0 0 1px #c62b3f,0 0 14px rgba(198,43,63,.35)}
+  .pillA.idle .av{background:#3a1219;border-color:#6e2233}
+  .pillA .idletmr{font-family:var(--mono);font-size:12px;font-weight:800;color:#ff8088;font-variant-numeric:tabular-nums;
+        background:rgba(198,43,63,.2);border:1px solid #6e2233;border-radius:20px;padding:2px 9px;margin-left:2px}
+  .pillA .camp{font-size:11.5px;font-weight:700;white-space:nowrap;margin-left:1px}
+  .pillA .calltmr{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums}
+  /* three-number readout on available agents: current idle / total idle today – total pause today */
+  .pillA .triplet{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pillA .triplet .cur{color:var(--ink2)} .pillA .triplet .cur.red{color:#ff8088}
+  .pillA .triplet .dash{color:#5a6b82;margin:0 1px}
+  /* inbound call being offered to an available agent → red blink (distinct from outbound Ringing) */
+  .pillA.offering{border-color:#e0455a;box-shadow:0 0 0 1px #e0455a,0 0 14px rgba(224,69,90,.4);animation:offpulse .8s steps(1) infinite}
+  @keyframes offpulse{50%{border-color:#7a1622;box-shadow:0 0 0 1px #7a1622}}
+  .pillA.offering .av{background:#3a1219}
+  .pillA .incoming{font-family:var(--mono);font-size:11.5px;font-weight:800;color:#ff8088}
+  /* pause type tag inside the pill: DND (yellow) vs regular pause */
+  .pillA .ptag{font-size:10px;font-weight:800;letter-spacing:.05em;border-radius:5px;padding:2px 7px;text-transform:uppercase}
+  .pillA .ptag.dnd{color:#1a1208;background:#f3c552}
+  .pillA .ptag.reg{color:var(--ink2);background:rgba(255,255,255,.07);border:1px solid var(--line2)}
+  .pillA .av{width:30px;height:30px;border-radius:50%;background:#24272f;display:flex;align-items:center;justify-content:center;
+         font-size:14px;flex:none;border:1px solid #363a44}
+  .pillA .nm{font-size:14px;font-weight:700;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pillA .tmr{font-family:var(--mono);font-size:12px;font-weight:700;color:#ffcf8a;font-variant-numeric:tabular-nums;
+        background:rgba(0,0,0,.28);border-radius:20px;padding:2px 9px;margin-left:2px}
+  /* only ringing is coloured — red. every other state is neutral black. */
+  .pillA.st-ringing{border-color:#c62b3f;background:#220f13;animation:ringpill 1s steps(1) infinite}
+  .pillA.st-ringing .av{background:#3a141b;border-color:#6e2233}
+  @keyframes ringpill{50%{border-color:#ff3b47;background:#301218}}
+
+  /* right: calls per agent leaderboard */
+  .lb{display:flex;flex-direction:column;gap:11px;overflow:hidden}
+  .lbrow{background:#0f2036;border:1px solid var(--line);border-radius:14px;padding:11px 14px}
+  @keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  .lbrow .top{display:flex;align-items:center;gap:10px}
+  .lbrow .rk{font-size:17px;font-weight:800;color:var(--muted);font-family:var(--mono);width:20px}
+  .lbrow .rk.g{color:var(--gold)}
+  .lbrow .nm{font-size:16px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lbrow .ct{font-size:26px;font-weight:800;color:var(--orange);font-variant-numeric:tabular-nums}
+  .lbrow .ct.good{color:var(--green)} .lbrow .ct.warn{color:var(--gold)} .lbrow .ct.hot{color:#ff7a7a}
+  .lbrow .qdot{width:12px;height:12px;border-radius:3px;flex:none}
+  .lbrow .cbar{height:7px;background:#12233d;border-radius:4px;overflow:hidden;margin-top:8px}
+  .lbrow .cbar>i{display:block;height:100%;border-radius:4px;transition:width .5s}
+  .card h2 .nextbtn{margin-left:10px;background:#15294a;border:1px solid var(--line2);color:var(--ink2);
+        width:26px;height:23px;border-radius:7px;font-size:15px;line-height:1;cursor:pointer;font-weight:800;padding:0;flex:none}
+  .card h2 .nextbtn:hover{background:#1c3a63;color:#fff}
+  .lbrow .split{display:flex;gap:16px;margin:6px 0 8px;font-size:13px;font-family:var(--mono)}
+  .lbrow .split .uit{color:var(--cyan)} .lbrow .split .in{color:var(--green)}
+  .lbrow .tag{display:inline-flex;align-items:center;gap:8px;background:#12243f;border:1px solid var(--line);border-radius:8px;
+        padding:4px 10px;font-size:12px;color:var(--ink2)}
+  .lbrow .tag b{color:var(--gold);font-family:var(--mono)}
+</style>
+</head>
+<body>
+  <!-- ═══════════ SUPERVISOR EDITION ═══════════
+       This is the supervisor-only variant of the TV wallboard. Two features below are
+       HIDDEN on the public floor wallboard and shown only to supervisors:
+       (1) the "available > 5 min" red idle flag with a counting timer, and
+       (2) the red top-left badge counting inbound calls each agent passed to a teammate. -->
+  <header>
+    <h1>Agent TV Board <span class="supv">Supervisor-weergave</span></h1>
+    <div class="spacer"></div>
+    <span class="chip live"><i></i>Live</span>
+    <span class="chip"><span id="clock">--:--:--</span></span>
+    <span class="chip">⤢ TV-modus</span>
+    <span class="chip logout">⎋ Uitloggen</span>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="body">
+    <div class="col">
+      <div class="card" style="flex:1">
+        <h2 class="cyan">≣ Wachtrijen <span class="sub" id="qCount">(0)</span></h2>
+        <div id="queues" style="overflow:hidden;flex:1;display:flex;flex-direction:column;justify-content:space-between"></div>
+      </div>
+    </div>
+
+    <div class="card status">
+      <h2>Agent status</h2>
+      <div class="statusScroll" id="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>↗ <span id="rvTitle">Calls per agent</span> <span class="sub" id="rvSub">(vandaag)</span>
+        <span class="dots" id="lbDots"></span>
+        <button class="nextbtn" id="rvNext" title="volgende weergave">›</button></h2>
+      <div class="lb" id="lb"></div>
+    </div>
+  </div>
+
+  <div class="disc">Fictieve recreatie — alle namen, campagnes en cijfers zijn verzonnen. Geen werkgever- of klantdata.</div>
+
+<script>
+/* ═══════════ fictional universe (shared with the other portfolio tools) ═══════════ */
+const CAMPS=["Aurora Pensioen","Castellum Verzekert","Meridian Uitvaart","Helios Leven"];
+const CCOL=["var(--c0)","var(--c1)","var(--c2)","var(--c3)"];
+const NAMES=["Sanne Visser","Daan de Jong","Emma Bakker","Luca Jansen","Mila de Vries",
+  "Bram Smit","Noor Meijer","Finn Bos","Julia Vermeer"];        // max ~9 for readability
+const ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const now=()=>Date.now();
+/* status order: beschikbaar → ringing → gesprek → pauze → pauze-DND */
+const GROUPS=[
+  {s:"beschikbaar",label:"Beschikbaar"},
+  {s:"ringing",label:"Ringing"},
+  {s:"gesprek",label:"In gesprek"},
+  {s:"pauze",label:"Pauze"},
+];
+
+const agents=NAMES.map((n,i)=>{
+  const c=i%CAMPS.length, r=Math.random();
+  const s = r<0.40?"beschikbaar": r<0.64?"gesprek": r<0.76?"ringing":"pauze";
+  return {name:n,c,s,since:now()-ri(3,300)*1000,out:ri(9,40),inb:ri(0,6),dir:"uit",passed:ri(0,3),idley:false,offer:null,
+          pauseType:Math.random()<0.72?"regular":"dnd",          // shown as a tag inside the pill when on pause
+          idleTotal:ri(200,2400)*1000, pauseTotal:ri(120,2700)*1000,  // cumulative time-in-status TODAY (resets daily)
+          closeRate:+(rnd(0.14,0.42)).toFixed(2), pace:ri(55,128)};   // conversion rate + pace, for the cycling panel
+});
+// two agents left idling on "beschikbaar" > 5 min → triggers the supervisor red idle flag
+[2,6].forEach(i=>{ agents[i].s="beschikbaar"; agents[i].since=now()-ri(330,520)*1000; agents[i].idley=true; agents[i].passed=ri(2,6); });
+const waits=CAMPS.map(()=>ri(0,3));         // people waiting per queue
+let hot=ri(0,CAMPS.length-1);               // the queue currently being worked hardest
+let lastTick=now();                         // for accumulating time-in-status
+const missedByCamp=CAMPS.map(()=>ri(2,17)); // missed calls per queue
+const convTotalCamp=CAMPS.map(()=>+(rnd(0.22,0.36)).toFixed(2)); // all-time conversion per campaign
+
+const $=id=>document.getElementById(id);
+const cnt=s=>agents.filter(a=>a.s===s).length;
+const talking=c=>agents.filter(a=>a.c===c && (a.s==="gesprek"||a.s==="ringing")).length;
+function fmt(ms){const s=Math.max(0,Math.floor(ms/1000));return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;}
+function fmtL(ms){let s=Math.max(0,Math.floor(ms/1000));const h=Math.floor(s/3600);s%=3600;const m=Math.floor(s/60);s%=60;
+  return h>0?`${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`:`${m}:${String(s).padStart(2,"0")}`;}
+
+/* ═══════════ simulation ═══════════ */
+function tick(){
+  const dt=now()-lastTick; lastTick=now();               // accrue cumulative time-in-status (daily totals)
+  agents.forEach(a=>{ if(a.s==="beschikbaar") a.idleTotal+=dt; else if(a.s==="pauze") a.pauseTotal+=dt; });
+  if(Math.random()<0.14) hot=ri(0,CAMPS.length-1);     // the worked queue shifts occasionally
+  CAMPS.forEach((_,c)=>{
+    const p = c===hot?0.4:0.1;                           // arrivals land mostly on the hot queue
+    if(Math.random()<p) waits[c]=Math.min(5,waits[c]+1); // queue stays realistic (a well-staffed floor)
+    else if(waits[c]>0 && Math.random()<0.3) waits[c]--; // the quiet queues drain
+    if(waits[c]>0 && Math.random()<0.08){ missedByCamp[c]++; waits[c]--; }  // a waiting caller abandons → missed
+  });
+  agents.forEach(a=>{
+    const held=now()-a.since, adv=()=>a.since=now();
+    // an inbound call is being offered to this available agent (blinking red) — accept or pass
+    if(a.offer){
+      if(now()-a.offer.since > rnd(2500,6500)){
+        if(Math.random()<0.7){ a.s="gesprek"; a.dir="in"; a.inb++; a.offer=null; adv(); }   // accepted (inbound)
+        else { a.passed++; waits[a.c]=Math.min(9,waits[a.c]+1); a.offer=null; adv(); }        // passed to a teammate
+      }
+      return;
+    }
+    switch(a.s){
+      case "beschikbaar":
+        if(a.idley) break;                                                          // stuck idle → supervisor flag keeps counting
+        if(waits[a.c]>0 && Math.random()<0.5){ a.offer={camp:a.c,since:now(),waited:ri(6,110)*1000}; waits[a.c]--; }  // fed an inbound
+        else if(waits[a.c]===0 && held>rnd(6000,16000) && Math.random()<0.4){ a.s="ringing"; a.dir="uit"; adv(); }    // dials OUTBOUND
+        else if(held>rnd(18000,42000) && Math.random()<0.12){ a.s="pauze"; a.pauseType=Math.random()<0.72?"regular":"dnd"; adv(); }
+        break;
+      case "ringing":                                                               // outbound ringing → answered
+        if(held>rnd(2000,4500)){ a.s="gesprek"; a.dir="uit"; a.out++; adv(); }
+        break;
+      case "gesprek":
+        if(held>rnd(9000,40000)){ if(Math.random()<0.14){ a.s="pauze"; a.pauseType=Math.random()<0.72?"regular":"dnd"; } else a.s="beschikbaar"; adv(); }
+        break;
+      case "pauze":
+        if(held>rnd(16000,58000)){ a.s="beschikbaar"; adv(); }
+        break;
+    }
+  });
+  render();
+}
+
+/* ═══════════ render ═══════════ */
+function renderKPIs(){
+  const ingelogd=agents.length;
+  const besch=cnt("beschikbaar");
+  const wachtenden=waits.reduce((s,w)=>s+w,0);
+  const outbound=agents.filter(a=>a.s==="gesprek"&&a.dir==="uit").length;
+  const bezet=cnt("gesprek")+cnt("ringing");
+  const box=(ic,n,l,cls)=>`<div class="kpi ${cls}">${ic?`<div class="ic">${ic}</div>`:""}<div class="n">${n}</div><div class="l">${l}</div></div>`;
+  $("kpis").innerHTML=
+    box("🎧",ingelogd,"Ingelogde agents","navy")+
+    box("",besch,"Beschikbaar","green")+
+    box("",wachtenden,"Wachtenden","red")+
+    box("",outbound,"Outbound actief","blue")+
+    box("",bezet,"Totaal bezet","red");
+}
+function renderQueues(){
+  $("qCount").textContent=`(${CAMPS.length})`;
+  $("queues").innerHTML=CAMPS.map((nm,c)=>{
+    const w=waits[c], g=talking(c), on=Math.min(9,w), m=missedByCamp[c];
+    return `<div class="qrow">
+      <div class="qt"><span class="qdot" style="background:${CCOL[c]}"></span>
+        <span class="qn">${nm}</span>${c===hot?'<span class="act">● actief</span>':''}</div>
+      <div class="qstats"><span class="w ${w>=5?'hot':''}">${w} wachtend</span><span class="g">${g} in gesprek</span>
+        <span class="qmiss" title="gemiste calls">✆✕ ${m}</span></div>
+      <div class="qbar"><i style="width:${on/9*100}%;background:${CCOL[c]}"></i></div>
+    </div>`;
+  }).join("");
+}
+function renderBanner(){
+  const offers=agents.filter(a=>a.offer);
+  const el=$("banner");
+  if(!offers.length){ el.className="banner"; el.innerHTML=`<div class="bidle">✆ Geen inkomend gesprek — wachten op de wachtrij…</div>`; return; }
+  el.className="banner active";
+  el.innerHTML=offers.slice(0,3).map(a=>{
+    const waited=a.offer.waited+(now()-a.offer.since);
+    return `<div class="boffer"><span class="bph">✆</span>
+      <span class="bcamp" style="color:${CCOL[a.offer.camp]}">${CAMPS[a.offer.camp]}</span>
+      <span class="btag">INKOMEND</span>
+      <span class="bwait">wachttijd ${fmt(waited)}</span>
+      <span class="barrow">→</span><span class="bagent">${a.name}</span></div>`;
+  }).join("");
+}
+function renderStatus(){
+  $("status").innerHTML=GROUPS.map(g=>{
+    const list=agents.filter(a=>a.s===g.s);
+    const pills=list.map(a=>{
+      const held=now()-a.since;
+      const idle = g.s==="beschikbaar" && !a.offer && held>300000;     // available > 5 min → supervisor flag
+      const offering = g.s==="beschikbaar" && a.offer;                 // inbound being fed → red blink
+      const badge = a.passed>0 ? `<span class="passbadge" title="calls doorgegeven aan collega">${a.passed}</span>` : "";
+      const camp = c=>`<span class="camp" style="color:${CCOL[c]}">${CAMPS[c].split(" ")[0]}</span>`;
+      let extra="";
+      if(offering){ const w=a.offer.waited+(now()-a.offer.since); extra=`${camp(a.offer.camp)}<span class="incoming">▸ ${fmt(w)}</span>`; }
+      else if(g.s==="beschikbaar"){                                    // three numbers: current idle / total idle today – total pause today
+        const cur=`<span class="cur${idle?' red':''}">${fmt(held)}</span>`;
+        extra=`<span class="triplet">${cur} / ${fmtL(a.idleTotal+held)} <span class="dash">–</span> ${fmtL(a.pauseTotal)}</span>`;
+      }
+      else if(g.s==="gesprek") extra=`${camp(a.c)}<span class="calltmr">${fmt(held)}</span>`;   // in-gesprek: campaign + call length
+      else if(g.s==="ringing") extra=camp(a.c);
+      else if(g.s==="pauze"){ const tag=a.pauseType==="dnd"?`<span class="ptag dnd">DND</span>`:`<span class="ptag reg">Pauze</span>`;
+        extra=`${tag}<span class="tmr">${fmt(held)}</span>`; }
+      return `<div class="pillA st-${g.s}${idle?' idle':''}${offering?' offering':''}">${badge}<div class="av">👤</div><span class="nm">${a.name}</span>${extra}</div>`;
+    }).join("");
+    return `<div class="grp"><div class="gh ${g.s}">${g.label} <span class="cnt">${list.length}</span></div>
+      <div class="pills">${pills||'<span class="pempty">— geen —</span>'}</div></div>`;
+  }).join("");
+}
+/* ═══════════ bottom-right: auto-cycling multi-view panel (top 5 each, dots + next button) ═══════════ */
+const calls=a=>a.out+a.inb;
+const inCamp=c=>agents.filter(a=>a.c===c);
+const campCalls=c=>inCamp(c).reduce((s,a)=>s+calls(a),0);
+const campOut=c=>inCamp(c).reduce((s,a)=>s+a.out,0);
+const campIn=c=>inCamp(c).reduce((s,a)=>s+a.inb,0);
+const campConv=c=>{ const ag=inCamp(c), tc=ag.reduce((s,a)=>s+calls(a),0);
+  return tc? ag.reduce((s,a)=>s+calls(a)*a.closeRate,0)/tc : 0; };
+const paceCls=p=>p>=100?'good':p>=85?'warn':'hot';
+const splitOI=(o,i)=>`<span class="uit">✆ ${o} uit</span><span class="in">✆ ${i} in</span>`;
+function rowAgent(rank,name,val,sub,c,cls){
+  return `<div class="lbrow"><div class="top">
+      <span class="rk ${rank<=3?'g':''}">${rank}</span><span class="nm">${name}</span>
+      <span class="ct ${cls||''}">${val}</span></div>
+    <div class="split">${sub}</div><span class="tag">${CAMPS[c]}</span></div>`;
+}
+function rowCamp(c,val,sub,pct,cls){
+  return `<div class="lbrow"><div class="top">
+      <span class="qdot" style="background:${CCOL[c]}"></span><span class="nm">${CAMPS[c]}</span>
+      <span class="ct ${cls||''}">${val}</span></div>
+    ${sub?`<div class="split">${sub}</div>`:'<div style="height:2px"></div>'}
+    <div class="cbar"><i style="width:${Math.min(100,pct)}%;background:${CCOL[c]}"></i></div></div>`;
+}
+const byCamp=(valFn)=>CAMPS.map((_,c)=>({c,v:valFn(c)})).sort((x,y)=>y.v-x.v);
+
+const VIEWS=[
+  {t:"Calls per agent",sub:"vandaag",build:()=>[...agents].sort((a,b)=>calls(b)-calls(a)).slice(0,5)
+     .map((a,i)=>rowAgent(i+1,a.name,calls(a),splitOI(a.out,a.inb),a.c)).join("")},
+  {t:"Calls per campagne",sub:"vandaag",build:()=>{ const arr=byCamp(campCalls), mx=Math.max(...arr.map(x=>x.v),1);
+     return arr.map(x=>rowCamp(x.c,x.v,splitOI(campOut(x.c),campIn(x.c)),x.v/mx*100)).join("");}},
+  {t:"Conversie per agent",sub:"vandaag",build:()=>[...agents].sort((a,b)=>b.closeRate-a.closeRate).slice(0,5)
+     .map((a,i)=>rowAgent(i+1,a.name,Math.round(a.closeRate*100)+"%",`${Math.round(calls(a)*a.closeRate)} van ${calls(a)} calls`,a.c)).join("")},
+  {t:"Conversie per campagne",sub:"vandaag",build:()=>byCamp(campConv)
+     .map(x=>rowCamp(x.c,Math.round(x.v*100)+"%","",x.v*100)).join("")},
+  {t:"Conversie per campagne",sub:"totaal",build:()=>byCamp(c=>convTotalCamp[c])
+     .map(x=>rowCamp(x.c,Math.round(x.v*100)+"%","",x.v*100)).join("")},
+  {t:"Pace per agent",sub:"vandaag",build:()=>[...agents].sort((a,b)=>b.pace-a.pace).slice(0,5)
+     .map((a,i)=>rowAgent(i+1,a.name,a.pace+"%","vs frontier",a.c,paceCls(a.pace))).join("")},
+];
+let vIdx=0;
+function renderView(animate){
+  const v=VIEWS[vIdx];
+  $("rvTitle").textContent=v.t; $("rvSub").textContent=`(${v.sub})`;
+  const lb=$("lb"); lb.innerHTML=v.build();
+  if(animate){ lb.style.animation='none'; void lb.offsetWidth; lb.style.animation='fade .45s ease'; }
+  $("lbDots").innerHTML=VIEWS.map((_,i)=>`<i class="${i===vIdx?'on':''}"></i>`).join("");
+}
+function nextView(){ vIdx=(vIdx+1)%VIEWS.length; renderView(true); }
+
+function render(){ renderKPIs(); renderQueues(); renderBanner(); renderStatus(); renderView(false); }
+
+/* ═══════════ loops ═══════════ */
+function clock(){ $("clock").textContent=new Date().toLocaleTimeString("nl-NL",{hour12:false}); }
+render(); clock();
+$("rvNext").onclick=nextView;
+setInterval(clock,1000);
+setInterval(tick,2200);
+setInterval(nextView,7000);
+</script>
+</body>
+</html>

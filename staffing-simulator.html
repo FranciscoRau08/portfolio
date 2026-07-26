@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outbound Campaign Staffing Simulator — recreation</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%230a0a0c%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27monospace%27 font-size=%2734%27 font-weight=%27bold%27 fill=%27%23f5f5f7%27 text-anchor=%27middle%27%3EF%3C/text%3E%3Crect x=%2744%27 y=%2738%27 width=%278%27 height=%2712%27 fill=%27%23ff3b47%27/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#16202E; --muted:#55607A; --faint:#8A93A6;
+    --bg:#F7F9FC; --card:#fff; --line:#E2E8F2;
+    --accent:#1F4FD8; --warn:#d03b3b; --good:#0ca30c; --gold:#B7791F;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);line-height:1.5;font-size:15px}
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 20px 70px}
+
+  .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+          color:var(--accent);margin-bottom:7px}
+  h1{font-size:27px;letter-spacing:-.02em;line-height:1.2}
+  .sub{color:var(--muted);margin-top:7px;max-width:780px;font-size:14.5px}
+  .disclaimer{margin-top:12px;background:#FDF6E9;border:1px solid #F0E0C0;color:#7A5A18;
+              border-radius:8px;padding:9px 13px;font-size:12.8px}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;
+         padding:17px 19px;margin-top:15px}
+  .panel h2{font-size:13px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;
+            color:var(--faint);margin-bottom:12px;font-weight:600}
+
+  .row{display:flex;flex-wrap:wrap;gap:11px;align-items:flex-end}
+  .fld{display:flex;flex-direction:column;gap:4px}
+  .fld label{font-size:11.5px;color:var(--muted);font-weight:600}
+  input[type=text],input[type=number],input[type=date],select{
+    font:inherit;font-size:13.5px;padding:6px 9px;border:1px solid var(--line);
+    border-radius:7px;background:#fff;color:var(--ink);min-width:112px}
+  button{font:inherit;font-size:13.5px;font-weight:600;padding:7px 15px;border-radius:8px;
+         border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+  button:hover{background:#1A43B8}
+  button.ghost{background:#fff;color:var(--ink);border-color:var(--line)}
+  button.ghost:hover{border-color:var(--accent);color:var(--accent)}
+  button.run{padding:11px 28px;font-size:15px}
+  button.run.stale{animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(31,79,216,.45)}50%{box-shadow:0 0 0 7px rgba(31,79,216,0)}}
+
+  .client{border:1px solid var(--line);border-radius:10px;margin-top:10px;overflow:hidden}
+  .client-hd{background:#F1F5FC;padding:8px 12px;font-size:12.5px;font-weight:700;
+             display:flex;justify-content:space-between;align-items:center;cursor:pointer;
+             user-select:none;gap:10px}
+  .client-hd:hover{background:#E8EFFA}
+  .client-hd .lead{display:flex;align-items:center;gap:8px;min-width:0;margin-right:auto}
+  .client-hd .count{font-family:var(--mono);font-weight:600;color:var(--muted);font-size:11.5px}
+  .client-hd .addbtn{flex:none;font-size:11.5px;font-weight:700;padding:4px 12px;border-radius:7px;
+                     border:1px solid var(--accent);background:#fff;color:var(--accent);cursor:pointer}
+  .client-hd .addbtn:hover{background:#EEF3FF}
+  .client-hd .chev{font-size:10px;color:var(--faint);transition:transform .15s;flex:none}
+  .client.open .client-hd .chev{transform:rotate(90deg)}
+  .client-body{display:none}
+  .client.open .client-body{display:block}
+  .client-hd .types{font-family:var(--mono);font-size:10px;color:var(--muted);
+                    background:#fff;border:1px solid var(--line);border-radius:20px;padding:1px 8px}
+  /* drop cards inside an umbrella */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:10px;padding:11px 12px}
+  .dropcard{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 11px;position:relative}
+  .dropcard.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(31,79,216,.13)}
+  .dc-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}
+  .dc-sched{font-family:var(--mono);font-size:10px;color:#0E6B4C;background:#E9F7F0;border:1px solid #C9E8DA;
+            border-radius:20px;padding:2px 8px;line-height:1.4;max-width:150px}
+  .dc-sched.mail{color:#8A5A15;background:#FDF4E6;border-color:#F0DEBE}
+  .dc-chan{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+  .dc-chan button{border:none;background:#fff;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--faint);
+                  line-height:1;transition:background .12s}
+  .dc-chan button.on{background:var(--accent);color:#fff}
+  .dc-body{display:grid;grid-template-columns:1fr;gap:7px}
+  .dc-f label{font-size:10px;color:var(--faint);font-weight:600;display:block;margin-bottom:2px;
+              text-transform:uppercase;letter-spacing:.04em}
+  .dc-f input,.dc-f select{width:100%;font-size:12.5px;padding:5px 7px;border:1px solid var(--line);
+                           border-radius:6px;background:#fff}
+  .dc-bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;margin-top:8px}
+  .dc-bottom .dc-f{flex:1;min-width:0}
+  .dc-del{color:var(--faint);cursor:pointer;font-size:14px;padding:4px 5px;flex:none;line-height:1}
+  .dc-del:hover{color:var(--warn)}
+  .addcard{border:1.5px dashed var(--line);border-radius:10px;background:#FBFCFE;display:flex;
+           align-items:center;justify-content:center;min-height:120px;cursor:pointer;color:var(--accent);
+           font-weight:700;font-size:13px}
+  .addcard:hover{border-color:var(--accent);background:#F2F6FF}
+  .newu{display:flex;gap:8px;align-items:center}
+  .newu input{font-size:13.5px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;min-width:180px}
+  /* optimizer suggestions */
+  .opt-ok{background:#E9F7F0;border:1px solid #BFE8D6;color:#0E6B4C;border-radius:10px;padding:14px 16px;
+          font-size:13.5px;display:flex;gap:9px;align-items:center}
+  .sugg{border:1px solid #F0D9A8;background:#FEFAF2;border-radius:11px;padding:14px 16px;margin-bottom:11px}
+  .sugg-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .sugg-problem{font-size:13.5px}
+  .sugg-problem b{color:#8A5A15}
+  .sugg-fix{margin-top:9px;font-size:12.8px;color:var(--muted);line-height:1.55}
+  .sugg-fix b{color:var(--ink)}
+  .sugg .batches{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+  .sugg .b{font-family:var(--mono);font-size:11.5px;background:#fff;border:1px solid var(--line);
+           border-radius:7px;padding:4px 9px}
+  .sugg .b .d{color:var(--good)}
+  .applybtn{flex:none;font-size:13px;font-weight:700;padding:8px 16px;border-radius:8px;
+            border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+  .applybtn:hover{background:#1A43B8}
+  .opt-all{margin-top:4px}
+  @media(max-width:720px){.addrow{grid-template-columns:1fr 1fr;row-gap:6px}}
+  .client-hd span.n{font-family:var(--mono);font-weight:600;color:var(--muted);font-size:11.5px}
+  .drop{display:grid;grid-template-columns:1fr 90px 108px 118px 128px 30px;gap:9px;align-items:center;
+        padding:7px 12px;border-top:1px solid var(--line);font-size:13px;cursor:pointer}
+  .drop:hover{background:#FAFCFF}
+  .drop.sel{background:#EAF0FF;box-shadow:inset 3px 0 0 var(--accent)}
+  .drop .tag{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:20px;
+             background:#EEF2F9;color:var(--muted);display:inline-block}
+  .drop .arr{font-family:var(--mono);font-size:11.5px;color:var(--good)}
+  .drop .del{color:var(--faint);text-align:center}
+  .drop .del:hover{color:var(--warn)}
+  .hint{font-size:12px;color:var(--faint);margin-top:8px}
+
+  /* outbound / inbound toggle */
+  .tabs{display:inline-flex;background:#EDF1F8;border-radius:9px;padding:3px;gap:3px;margin-bottom:14px}
+  .tabs button{background:transparent;border:none;color:var(--muted);font-size:13px;font-weight:600;
+               padding:7px 17px;border-radius:7px;cursor:pointer}
+  .tabs button:hover{background:#E3E9F4;color:var(--ink)}
+  .tabs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,30,60,.12)}
+  .tabs button.on[data-side="in"]{color:#0E7C89}
+  .side{display:none} .side.on{display:block}
+
+  /* fixed retry schedule */
+  .sched{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}
+  .sched .s{background:#F1F5FC;border:1px solid var(--line);border-radius:8px;padding:6px 11px;
+            font-family:var(--mono);font-size:11.8px;color:var(--muted)}
+  .sched .s b{color:var(--ink)}
+
+  /* per-attempt grid */
+  .grid{width:100%;border-collapse:collapse}
+  .grid th{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+           color:var(--faint);font-weight:600;padding:6px 8px;text-align:center;border-bottom:1px solid var(--line)}
+  .grid th:first-child{text-align:left;width:190px}
+  .grid td{padding:7px 8px;border-bottom:1px solid #F1F4F9;vertical-align:middle}
+  .grid td:first-child{font-size:12.6px;font-weight:600;color:var(--muted)}
+  .cell{display:flex;flex-direction:column;gap:2px;align-items:center}
+  .cell output{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--ink)}
+  .cell input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+  .cell input[type=number]{width:72px;padding:4px 6px;font-size:12.5px;text-align:center;min-width:0}
+
+  .knobs{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:13px 22px;margin-top:16px}
+  .knob label{display:flex;justify-content:space-between;font-size:12.3px;color:var(--muted);margin-bottom:2px}
+  .knob label output{font-family:var(--mono);color:var(--ink);font-weight:700}
+  .knob input[type=range]{width:100%;accent-color:var(--accent)}
+
+  /* agent capacity stepper */
+  .cap{margin-top:18px;border:1px solid var(--line);border-radius:11px;padding:15px 17px;
+       background:linear-gradient(180deg,#FBFCFE,#F5F8FD);display:flex;flex-wrap:wrap;
+       gap:18px;align-items:center;justify-content:space-between}
+  .cap-l .t{font-size:13.5px;font-weight:700}
+  .cap-l .s{font-size:12px;color:var(--faint);margin-top:2px;max-width:430px}
+  .stepper{display:flex;align-items:center;gap:11px}
+  .stepper button{width:40px;height:40px;padding:0;font-size:21px;line-height:1;border-radius:10px;
+                  background:#fff;color:var(--accent);border:1px solid var(--line);font-weight:700}
+  .stepper button:hover{border-color:var(--accent);background:#F2F6FF}
+  .stepper input{width:96px;text-align:center;font-family:var(--mono);font-size:27px;font-weight:700;
+                 padding:5px 4px;border:1px solid var(--line);border-radius:10px;color:var(--ink)}
+  .stepper .u{font-size:11.5px;color:var(--faint);font-family:var(--mono);line-height:1.35}
+  .prio{font-size:11.6px;color:var(--faint);margin-top:9px;font-family:var(--mono)}
+  .prio b{color:var(--muted)}
+
+  .chart-hd{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+  .winnav{display:flex;gap:10px;align-items:center;justify-content:center;font-family:var(--mono);
+          font-size:12.5px;color:var(--muted);margin:4px 0 8px}
+  #winLbl{font-weight:700;color:var(--ink);min-width:150px;text-align:center}
+  canvas{width:100%;display:block;margin-top:12px;border-radius:8px;cursor:crosshair}
+  .legend{display:flex;flex-wrap:wrap;gap:11px;margin-top:10px;font-size:11.8px;color:var(--muted)}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .tip{position:fixed;pointer-events:none;background:#fff;border:1px solid var(--line);
+       border-radius:11px;padding:12px 14px;opacity:0;transition:opacity .09s;z-index:40;
+       box-shadow:0 10px 34px rgba(15,25,55,.17);width:492px;max-width:92vw}
+
+  .stats-hd{display:flex;justify-content:space-between;align-items:center;margin-top:16px;margin-bottom:9px;gap:10px}
+  .stats-title{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:11px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .stat .n{font-size:22px;font-weight:700;letter-spacing:-.02em}
+  .stat .l{font-size:11.5px;color:var(--faint);margin-top:1px}
+
+  .msg{padding:34px 20px;text-align:center;border:1px dashed var(--line);border-radius:10px;
+       margin-top:12px;background:#FCFDFF}
+  .msg.stale{border-color:#F0D9A8;background:#FEFAF2}
+  /* per-campaign attempt breakdown (lives inside the hover tooltip) */
+  .detail-hd{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;
+             margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  .detail-hd .d{font-size:13.5px;font-weight:700}
+  .detail-hd .s{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .crow{display:grid;grid-template-columns:150px repeat(5,1fr);gap:5px;align-items:center;margin-bottom:5px}
+  .cname{font-size:11.4px;font-weight:600;display:flex;align-items:center;gap:6px;min-width:0}
+  .cname i{width:9px;height:9px;border-radius:2px;flex:none}
+  .cname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25}
+  .box{border:1px solid var(--line);border-radius:6px;padding:4px 2px;text-align:center;background:#fff}
+  .box .v{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.2}
+  .box .t{font-family:var(--mono);font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+  .box.off{background:#F7F8FA;border-color:#EDF0F5}
+  .box.off .v{color:#C9CFD9;font-weight:600}
+  .box.off .t{color:#DCE1E9}
+  .crow.head .t-h{font-family:var(--mono);font-size:8.5px;letter-spacing:.05em;text-transform:uppercase;
+                  color:var(--faint);text-align:center}
+  .none{font-size:11.8px;color:var(--faint)}
+  .msg .big{font-size:14.5px;font-weight:600;color:var(--muted)}
+  .msg .small{font-size:12.5px;color:var(--faint);margin-top:4px}
+  .hidden{display:none !important}
+  @media(max-width:720px){.drop{grid-template-columns:1fr 70px 90px;row-gap:4px}.grid th:first-child{width:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Portfolio recreation · Dutch outbound contact centre</div>
+  <h1>Outbound Campaign Staffing Simulator</h1>
+  <p class="sub">Mailing calendar in, daily agent demand out — 500 working days ahead. Rebuilt from
+  scratch to mirror the internal planning application I designed and deployed.</p>
+  <div class="disclaimer"><b>All rates, durations and campaign figures below are invented for this
+  recreation.</b> No employer or client data appears anywhere on this page. The structure is the work;
+  the numbers are illustrative.</div>
+</header>
+
+<!-- ───────── 1 · mailing calendar ───────── -->
+<div class="panel">
+  <h2>Campaign calendar</h2>
+  <div class="tabs">
+    <button class="on" data-side="out" id="tabOut">Outbound campaigns</button>
+    <button data-side="in" id="tabIn">Inbound campaigns</button>
+  </div>
+
+  <!-- ══ inbound side ══ -->
+  <div class="side" id="sideIn">
+    <div class="row">
+      <div class="fld"><label>Client</label>
+        <input type="text" id="iClient" list="clients" value="Client A" placeholder="Client name"></div>
+      <div class="fld"><label>Campaign name</label>
+        <input type="text" id="iName" value="Service line" placeholder="e.g. Service line"></div>
+      <div class="fld"><label>Volume</label>
+        <input type="number" id="iVol" value="120" min="1" step="10"></div>
+      <div class="fld"><label>Per</label>
+        <select id="iUnit"><option value="day">working day</option><option value="month">month</option></select></div>
+      <div class="fld"><label>Avg handling time (min)</label>
+        <input type="number" id="iAht" value="6" min="0.5" step="0.5"></div>
+      <div class="fld"><label>Active from</label>
+        <input type="date" id="iFrom" value="2026-09-07"></div>
+      <div class="fld"><label>Active until <span style="font-weight:400;color:var(--faint)">(blank = ongoing)</span></label>
+        <input type="date" id="iTo"></div>
+      <button id="addInbound">+ Add inbound campaign</button>
+    </div>
+    <p class="hint">Inbound volume is spread <b>uniformly across the operating day</b> and across every working
+    day in the period — no calling at weekends. Monthly volumes are divided by that month's working days.</p>
+    <div id="inboundList"></div>
+  </div>
+
+  <!-- ══ outbound side ══ -->
+  <div class="side on" id="sideOut">
+    <div class="row" style="justify-content:space-between">
+      <div class="newu">
+        <input type="text" id="newClientName" list="clients" placeholder="New client name…">
+        <button id="newClientBtn">+ Create umbrella</button>
+        <datalist id="clients"></datalist>
+      </div>
+      <button class="ghost" id="demoBtn">Load example calendar</button>
+    </div>
+    <p class="hint">Postal drops snap to the mailing house's weekly cycle — dispatch every Tuesday, landing
+    the Friday of the following week; email drops land the same day. Create a client umbrella, then use
+    <b>+ Add</b> on its header to add drops inside. One-offs go under <b>Other</b>. Click a header to expand.</p>
+    <div id="clientList"></div>
+  </div>
+
+  <div id="chokeBox" style="margin-top:16px"></div>
+</div>
+
+<!-- ───────── 2 · parameters ───────── -->
+<div class="panel">
+  <h2>Model parameters — <span id="knobCampaign" style="color:var(--accent)">mortgage</span> preset</h2>
+  <div class="sched" id="sched"></div>
+  <table class="grid"><thead><tr>
+    <th>Per attempt</th><th>1st</th><th>2nd</th><th>3rd</th><th>4th</th><th>5th</th>
+  </tr></thead><tbody id="gridBody"></tbody></table>
+
+  <div class="knobs" id="globalKnobs"></div>
+
+  <div class="cap">
+    <div class="cap-l">
+      <div class="t">Max agents available</div>
+      <div class="s">The hard ceiling on what the floor can work in a day. Anything the queue can't absorb
+      rolls over to the next working day and stacks behind that day's own demand.</div>
+      <div class="prio">served in order: <b>inbound campaigns</b> (contractual, real-time) →
+        <b>first calls</b> → <b>callbacks</b> → <b>inbound returns</b> → <b>2nd–5th attempts</b></div>
+    </div>
+    <div class="stepper">
+      <button id="capDown" title="fewer agents">−</button>
+      <input type="number" id="capAgents" value="10" min="1" max="400" step="1">
+      <button id="capUp" title="more agents">+</button>
+      <div class="u">agents<br><span id="capHours">= 65 h/day</span></div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:18px">
+    <button class="run" id="runBtn">▶ Run simulation</button>
+    <button class="ghost" id="resetBtn">Reset to campaign preset</button>
+  </div>
+</div>
+
+<!-- ───────── 3 · output ───────── -->
+<div class="panel">
+  <div class="chart-hd">
+    <h2 style="margin:0">Daily agent demand</h2>
+    <div class="tabs" style="margin:0">
+      <button class="on" id="tabCap">Capped</button>
+      <button id="tabUncap">Uncapped</button>
+    </div>
+  </div>
+  <div id="chartWrap" class="hidden">
+    <div class="winnav" id="winNav">
+      <button class="ghost" id="prevW">‹ prev</button>
+      <span id="winLbl">—</span>
+      <button class="ghost" id="nextW">next ›</button>
+    </div>
+    <canvas id="cv" width="2200" height="720"></canvas>
+    <div class="legend" id="legend"></div>
+    <div class="stats-hd">
+      <span class="stats-title">Summary</span>
+      <div class="tabs" style="margin:0">
+        <button id="scopeWin" class="on">This window</button>
+        <button id="scopeAll">All 500 days</button>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div class="msg" id="msg">
+    <div class="big" id="msgBig">Add a drop, then press Run simulation.</div>
+    <div class="small" id="msgSmall">Results appear here.</div>
+  </div>
+</div>
+
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+/* ══════════ presets — ALL FIGURES INVENTED ══════════ */
+/* retry schedule is FIXED across every campaign (working-day offsets from landing) */
+const OFFSETS = [1, 3, 6, 9, 13];
+
+const PRESETS = {
+  mortgage:  {pick:[42,35,29,24,20], yes:[26,24,22,20,18], no:[30,32,34,36,38], inb:[6,5,4,3,3],
+              dur:[7.5,7,6.5,6,5.5], miss:22, rec:34, lead:11, dial:0.6, shift:6.5},
+  pension:   {pick:[54,46,39,33,28], yes:[31,29,27,25,23], no:[26,28,30,32,34], inb:[9,7,6,5,4],
+              dur:[9.5,9,8.5,8,7.5], miss:29, rec:41, lead:14, dial:0.5, shift:6.5},
+  insurance: {pick:[38,32,27,23,19], yes:[21,19,18,16,15], no:[38,40,42,44,45], inb:[5,4,4,3,2],
+              dur:[5.5,5,4.5,4.5,4], miss:18, rec:30, lead:8, dial:0.6, shift:7},
+  cremation: {pick:[58,50,43,37,31], yes:[34,32,30,28,26], no:[22,24,26,28,30], inb:[11,9,7,6,5],
+              dur:[12,11,10.5,10,9.5], miss:33, rec:46, lead:17, dial:0.5, shift:6}
+};
+const LABEL = {mortgage:"Mortgage",pension:"Pension",insurance:"Insurance",cremation:"Cremation"};
+
+/* per-attempt rows: sliders for rates, typed boxes for durations */
+const ROWS = [
+  {k:"pick", label:"Pickup rate %",                   min:0, max:100, step:1,   type:"range", unit:"%"},
+  {k:"yes",  label:"Yes %",                           min:0, max:100, step:1,   type:"range", unit:"%"},
+  {k:"no",   label:"No %",                            min:0, max:100, step:1,   type:"range", unit:"%"},
+  {k:"inb",  label:"Outbound returning as inbound %", min:0, max:40,  step:1,   type:"range", unit:"%"},
+  {k:"dur",  label:"Call duration (min)",             min:0.5, max:40, step:0.5, type:"number", unit:""}
+];
+const GLOBALS = [
+  {k:"miss",  label:"Records with no phone number",             min:0, max:60, step:1,   unit:"%"},
+  {k:"rec",   label:"…who supply one after the follow-up letter", min:0, max:90, step:1, unit:"%"},
+  {k:"lead",  label:"Callback / lead call duration",            min:1, max:40, step:0.5, unit:" min"},
+  {k:"dial",  label:"Dial time — no answer",                    min:0.1, max:3, step:0.1, unit:" min"},
+  {k:"shift", label:"Productive hours per agent shift",         min:3, max:8,  step:0.5, unit:" h"}
+];
+
+/* attempts 1→5: blue ordinal ramp (dark→light), validated via dataviz skill.
+   the 3 non-attempt segments: validated categorical accents (aqua / amber / pink). */
+const SEG = [
+  {k:"a0",label:"1st attempt",c:"#104281"},{k:"a1",label:"2nd attempt",c:"#1c5cab"},
+  {k:"a2",label:"3rd attempt",c:"#2a78d6"},{k:"a3",label:"4th attempt",c:"#5598e7"},
+  {k:"a4",label:"5th attempt",c:"#86b6ef"},{k:"inb",label:"Inbound (from outbound)",c:"#e87ba4"},
+  {k:"cb",label:"Callback / lead",c:"#eda100"},
+  {k:"ib",label:"Inbound campaign",c:"#1baf7a"}
+];
+
+const HORIZON = 500, WIN = 20, START = new Date(2026,8,7);   // Mon 7 Sep 2026
+let drops = [], inbounds = [], selected = null, P = null, win = 0, hover = -1;
+let sim = null, simCapped = null, simUncapped = null, capped = true;
+
+/* ══════════ calendar ══════════ */
+const dateOf   = d => {const w=new Date(START); w.setDate(w.getDate()+d); return w;};
+const isWeekend= d => {const g=dateOf(d).getDay(); return g===0||g===6;};
+const fmt      = d => dateOf(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+const fmtLong  = d => dateOf(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+const dayName  = d => dateOf(d).toLocaleDateString('en-GB',{weekday:'short'});
+const idxOf    = s => Math.round((new Date(s)-START)/864e5);
+
+function resolveArrival(dateStr, channel){
+  let i = idxOf(dateStr); if(i<0) i=0;
+  if(channel==="email") return {dispatch:i, arrive:i};
+  let d=i; while(dateOf(d).getDay()!==2) d++;      // next Tuesday dispatch
+  return {dispatch:d, arrive:d+10};                // → Friday of following week
+}
+function addWork(from,n){ let d=from,l=n; while(l>0){d++; if(!isWeekend(d)) l--;} while(isWeekend(d)) d++; return d; }
+
+/* working days in the calendar month containing day-index d — used to spread monthly inbound volume */
+const _wdCache = {};
+function workDaysInMonth(d){
+  const dt=dateOf(d), key=dt.getFullYear()+'-'+dt.getMonth();
+  if(_wdCache[key]!=null) return _wdCache[key];
+  const last=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();
+  let n=0; for(let day=1;day<=last;day++){
+    const g=new Date(dt.getFullYear(),dt.getMonth(),day).getDay();
+    if(g!==0&&g!==6) n++;
+  }
+  return _wdCache[key]=n;
+}
+
+/* ══════════ simulation ══════════ */
+const blank = () => { const o={hours:0,total:0,agents:0,byCamp:{},byInb:{},
+                                backlog:0,backlogH:0,overflow:false,capH:0,
+                                excess:0,worstWait:0,excessWait:0,excessOver5:0,finished:[]}; SEG.forEach(s=>o[s.k]=0); return o; };
+
+/* cumulative working-day index, so "how many working days late" is O(1) */
+const WD=(()=>{ const a=new Array(HORIZON); let n=0;
+  for(let i=0;i<HORIZON;i++){ if(!isWeekend(i)) n++; a[i]=n; } return a; })();
+const waitDays=(from,to)=>Math.max(0, WD[Math.min(to,HORIZON-1)]-WD[Math.min(from,HORIZON-1)]);
+
+/* Capacity-constrained day-by-day simulation.
+   Work is a queue. Each day the floor has (maxAgents x productive hours) to spend.
+   Whatever it cannot reach rolls into the next working day - and because a delayed
+   attempt delays everything downstream, retries are scheduled off the day the work
+   was ACTUALLY done, not the day it was originally due.                          */
+function simulate(uncapped, dropList){
+  const src = dropList || drops;
+  const b = Array.from({length:HORIZON}, blank);
+  const queue = [];
+  const push = it => { if(it.day<HORIZON && it.count>0.4) queue.push(it); };
+  const started = new Set(), done = new Set();
+  const dropWait = {};                                  // per-drop worst 1st-call wait
+  const bumpWait = (id,w)=>{ dropWait[id]=Math.max(dropWait[id]||0,w); };
+
+  src.forEach(dr=>{
+    const base = PRESETS[dr.campaign];
+    const prm = (!dropList && selected && selected.id===dr.id) ? P
+      : Object.assign({}, base, {lead:P.lead, dial:P.dial, shift:P.shift, miss:P.miss, rec:P.rec});
+    const {arrive} = resolveArrival(dr.date, dr.channel);
+    const d1=addWork(arrive,OFFSETS[0]), d2=addWork(addWork(arrive,8),OFFSETS[0]);
+    push({day:d1, due0:d1, kind:'att', i:0,
+          count:dr.letters*(1-prm.miss/100), prm, dropId:dr.id});
+    push({day:d2, due0:d2, kind:'att', i:0,
+          count:dr.letters*(prm.miss/100)*(prm.rec/100), prm, dropId:dr.id});
+  });
+
+  const costPerCall = it => it.kind==='att'
+      ? (it.prm.pick[it.i]/100*it.prm.dur[it.i] + (1-it.prm.pick[it.i]/100)*it.prm.dial)/60
+      : it.kind==='cb' ? it.prm.lead/60 : it.dur/60;
+  /* first calls outrank everything else on the outbound side: the wait between a letter
+     landing and the first call is what actually degrades contactability */
+  const rank = it => (it.kind==='att' && it.i===0) ? 0
+                   : it.kind==='cb' ? 1 : it.kind==='ret' ? 2 : (3 + it.i);
+
+  for(let d=0; d<HORIZON; d++){
+    const day = b[d];
+    if(isWeekend(d)) continue;
+
+    /* 1 - inbound campaigns are non-deferrable: a customer is on the line */
+    inbounds.forEach(ic=>{
+      const from=Math.max(0,idxOf(ic.from)), to=ic.to?Math.min(HORIZON-1,idxOf(ic.to)):HORIZON-1;
+      if(d<from||d>to) return;
+      const calls = ic.unit==='month' ? ic.vol/workDaysInMonth(d) : ic.vol;
+      day.ib+=calls; day.byInb[ic.id]=(day.byInb[ic.id]||0)+calls; day.hours+=calls*ic.aht/60;
+    });
+
+    const capH = uncapped ? Infinity : P.maxAgents * P.shift;
+    day.capH = uncapped ? 0 : capH;
+    let left = capH - day.hours;
+
+    /* 2 - serve the outbound queue by priority, oldest cohorts before fresh ones */
+    const due = queue.filter(it=>it.day<=d).sort((x,y)=>rank(x)-rank(y));
+    due.forEach(it=>{ if(it.dropId!=null) started.add(it.dropId); });
+    for(const it of due){
+      if(left<=0.001) break;
+      const cpc = costPerCall(it);
+      if(cpc<=0){ it.count=0; continue; }
+      const served = Math.min(it.count, left/cpc);
+      if(served<0.4) continue;
+      left -= served*cpc;
+      it.count -= served;
+
+      if(it.kind==='att'){
+        const p=it.prm, i=it.i;
+        if(i===0){ const w=waitDays(it.due0, d); day.worstWait=Math.max(day.worstWait,w); bumpWait(it.dropId,w); }
+        day["a"+i]+=served;
+        (day.byCamp[it.dropId]=day.byCamp[it.dropId]||[0,0,0,0,0])[i]+=served;
+        day.hours += served*cpc;
+        const picked=served*p.pick[i]/100, noAns=served-picked;
+        const later=Math.max(0, picked - picked*p.yes[i]/100 - picked*p.no[i]/100);
+        const ret=noAns*p.inb[i]/100;
+        if(later>0.4) push({day:addWork(d,3), kind:'cb', count:later, prm:p, dropId:it.dropId});
+        if(ret>0.4)   push({day:addWork(d,1), kind:'ret', count:ret, dur:p.dur[i], prm:p, dropId:it.dropId});
+        const nextPool = noAns - ret;
+        if(i<4 && nextPool>0.4)
+          push({day:addWork(d, OFFSETS[i+1]-OFFSETS[i]), kind:'att', i:i+1,
+                count:nextPool, prm:p, dropId:it.dropId});
+      } else if(it.kind==='cb'){
+        day.cb += served; day.hours += served*cpc;
+      } else {
+        day.inb += served; day.hours += served*cpc;
+      }
+    }
+
+    /* snap away float crumbs from the serving loop, so a 1e-14 overshoot
+       can't round up into a whole extra agent */
+    if(!uncapped && day.hours > capH && day.hours - capH < 1e-6) day.hours = capH;
+
+    /* 3 - whatever is still pending is backlog and rolls forward */
+    for(let k=queue.length-1;k>=0;k--) if(queue[k].count<0.4) queue.splice(k,1);
+    const waiting = queue.filter(it=>it.day<=d);
+    day.backlog  = waiting.reduce((s,it)=>s+it.count,0);
+    day.backlogH = waiting.reduce((s,it)=>s+it.count*costPerCall(it),0);
+    day.overflow = day.backlog > 0.5;
+    /* people who were posted a letter and still haven't had a first call —
+       i.e. more letters went out than the floor can physically work */
+    const firstWaiting = waiting.filter(it=>it.kind==='att' && it.i===0);
+    day.excess = firstWaiting.reduce((s,it)=>s+it.count,0);
+    firstWaiting.forEach(it=>{ day.worstWait = Math.max(day.worstWait, waitDays(it.due0, d)); });
+    /* worst wait among first calls STILL owed today — drives the "too many letters" flag */
+    day.excessWait = firstWaiting.reduce((m,it)=>Math.max(m, waitDays(it.due0, d)), 0);
+    day.excessOver5 = firstWaiting.reduce((s,it)=> waitDays(it.due0,d)>5 ? s+it.count : s, 0);
+    firstWaiting.forEach(it=> bumpWait(it.dropId, waitDays(it.due0, d)) );
+
+    /* a drop is finished once nothing of it remains anywhere in the queue */
+    started.forEach(id=>{
+      if(done.has(id)) return;
+      if(!queue.some(it=>it.dropId===id)){ done.add(id); day.finished.push(id); }
+    });
+  }
+
+  /* agents rounded to the nearest 0.5 — a truer estimate than ceiling to a whole head.
+     EPS keeps float noise from bumping an exact value up half a step. */
+  const EPS=1e-9;
+  b.forEach(x=>{ x.total=SEG.reduce((s,g)=>s+x[g.k],0);
+    x.agents = x.hours>EPS ? Math.round(x.hours/P.shift*2 - EPS)/2 : 0; });
+  b.dropWait = dropWait;
+  return b;
+}
+
+/* ══════════ stale-result guard ══════════ */
+function invalidate(){
+  scheduleAnalyze();              // keep the calendar's choke box live even while the chart is stale
+  if(!sim) return;
+  sim = simCapped = simUncapped = null; hover = -1;
+  document.getElementById('chartWrap').classList.add('hidden');
+  document.getElementById('tip').style.opacity = 0;
+  const m=document.getElementById('msg');
+  m.classList.remove('hidden'); m.classList.add('stale');
+  document.getElementById('msgBig').textContent = 'Parameters changed — results cleared.';
+  document.getElementById('msgSmall').textContent =
+    'The chart below would no longer match the settings above. Press Run simulation to recalculate.';
+  document.getElementById('runBtn').classList.add('stale');
+  document.getElementById('winNav').classList.add('hidden');
+}
+
+/* ══════════ build parameter UI ══════════ */
+function buildGrid(){
+  const tb=document.getElementById('gridBody'); tb.innerHTML='';
+  ROWS.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.label}</td>`;
+    for(let i=0;i<5;i++){
+      const td=document.createElement('td');
+      td.innerHTML = r.type==='range'
+        ? `<div class="cell"><output id="o_${r.k}_${i}"></output>
+             <input type="range" id="p_${r.k}_${i}" min="${r.min}" max="${r.max}" step="${r.step}"></div>`
+        : `<div class="cell"><input type="number" id="p_${r.k}_${i}" min="${r.min}" max="${r.max}" step="${r.step}"></div>`;
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+  ROWS.forEach(r=>{ for(let i=0;i<5;i++){
+    const el=document.getElementById(`p_${r.k}_${i}`);
+    el.oninput=()=>{ P[r.k][i]=+el.value||0;
+      if(r.type==='range') document.getElementById(`o_${r.k}_${i}`).textContent=P[r.k][i]+r.unit;
+      invalidate(); };
+  }});
+
+  const g=document.getElementById('globalKnobs'); g.innerHTML='';
+  GLOBALS.forEach(k=>{
+    const d=document.createElement('div'); d.className='knob';
+    d.innerHTML=`<label>${k.label} <output id="o_${k.k}"></output></label>
+      <input type="range" id="p_${k.k}" min="${k.min}" max="${k.max}" step="${k.step}">`;
+    g.appendChild(d);
+  });
+  GLOBALS.forEach(k=>{
+    const el=document.getElementById(`p_${k.k}`);
+    el.oninput=()=>{ P[k.k]=+el.value; document.getElementById(`o_${k.k}`).textContent=P[k.k]+k.unit;
+      if(k.k==='shift') capUI(); invalidate(); };
+  });
+  document.getElementById('capUp').onclick   = ()=>setCap(P.maxAgents+1);
+  document.getElementById('capDown').onclick = ()=>setCap(P.maxAgents-1);
+  document.getElementById('capAgents').oninput = e=>setCap(+e.target.value);
+
+  document.getElementById('sched').innerHTML =
+    OFFSETS.map((o,i)=>`<div class="s">attempt ${i+1} · <b>+${o}</b> working day${o>1?'s':''}</div>`).join('')
+    + `<div class="s" style="background:#FCFCFD">retry schedule is <b>fixed</b> for every campaign</div>`;
+}
+
+function paint(){
+  ROWS.forEach(r=>{ for(let i=0;i<5;i++){
+    document.getElementById(`p_${r.k}_${i}`).value = P[r.k][i];
+    if(r.type==='range') document.getElementById(`o_${r.k}_${i}`).textContent = P[r.k][i]+r.unit;
+  }});
+  GLOBALS.forEach(k=>{ document.getElementById(`p_${k.k}`).value=P[k.k];
+    document.getElementById(`o_${k.k}`).textContent=P[k.k]+k.unit; });
+}
+function capUI(){
+  document.getElementById('capAgents').value = P.maxAgents;
+  document.getElementById('capHours').textContent = '= ' + (P.maxAgents*P.shift).toFixed(0) + ' h/day';
+}
+function setCap(v){
+  P.maxAgents = Math.max(1, Math.min(400, Math.round(v)||1));
+  capUI(); invalidate();
+}
+function loadPreset(c, keepGlobals){
+  const p=PRESETS[c];
+  const keep = keepGlobals && P ? {lead:P.lead,dial:P.dial,shift:P.shift,miss:P.miss,rec:P.rec} : {};
+  const cap = P ? P.maxAgents : 10;
+  P = Object.assign({}, p, {pick:[...p.pick],yes:[...p.yes],no:[...p.no],inb:[...p.inb],dur:[...p.dur]}, keep);
+  P.maxAgents = cap;
+  document.getElementById('knobCampaign').textContent = LABEL[c].toLowerCase();
+  paint(); capUI(); invalidate();
+}
+
+/* ══════════ drops ══════════ */
+/* "Other" always sorts last; everything else alphabetical */
+const clientSort=(a,b)=> a==='Other' ? 1 : b==='Other' ? -1 : a.localeCompare(b);
+const expanded = new Set();
+let outGroups = new Set(['Other']);          // outbound umbrellas, including empty ones
+
+function refreshClientList(){
+  const names=[...new Set([...drops.map(d=>d.client), ...outGroups])].sort(clientSort);
+  document.getElementById('clients').innerHTML = names.map(n=>`<option>${n}</option>`).join('');
+}
+
+const CAMP_OPTS = Object.keys(LABEL).map(k=>`<option value="${k}">${LABEL[k]}</option>`).join('');
+
+function renderDrops(){
+  const host=document.getElementById('clientList'); host.innerHTML='';
+  const by={}; drops.forEach(d=>(by[d.client]=by[d.client]||[]).push(d));
+  const names=[...new Set([...outGroups, ...Object.keys(by)])].sort(clientSort);
+
+  names.forEach(cl=>{
+    const list=by[cl]||[], tot=list.reduce((s,d)=>s+d.letters,0);
+    const types=[...new Set(list.map(d=>LABEL[d.campaign]))];
+    const el=document.createElement('div'); el.className='client'+(expanded.has(cl)?' open':'');
+    el.innerHTML=`<div class="client-hd">
+      <span class="lead"><span class="chev">▶</span><span>${cl}</span>
+        ${types.length?`<span class="types">${types.join(' · ')}</span>`:''}</span>
+      <span class="count">${list.length} drop${list.length!==1?'s':''} · ${tot.toLocaleString()} records</span>
+      <button class="addbtn">+ Add</button></div>`;
+    el.querySelector('.client-hd').onclick=()=>{
+      expanded.has(cl)?expanded.delete(cl):expanded.add(cl); el.classList.toggle('open');
+    };
+    el.querySelector('.addbtn').onclick=e=>{ e.stopPropagation(); addDropTo(cl); };
+    const body=document.createElement('div'); body.className='client-body'; el.appendChild(body);
+
+    const cards=document.createElement('div'); cards.className='cards';
+    list.forEach(d=> cards.appendChild(dropCard(d)) );
+    const addc=document.createElement('div'); addc.className='addcard';
+    addc.textContent='+ Add drop'; addc.onclick=()=>addDropTo(cl);
+    cards.appendChild(addc);
+    body.appendChild(cards);
+    host.appendChild(el);
+  });
+  refreshClientList();
+}
+
+const MAIL_ICON='✉', EMAIL_ICON='@';
+
+function schedLabel(d){
+  const {dispatch,arrive}=resolveArrival(d.date,d.channel);
+  return d.channel==='letter'
+    ? {cls:'mail', html:`📮 dispatch ${fmt(dispatch)}<br>→ lands ${fmt(arrive)}`}
+    : {cls:'',     html:`⚡ email · day zero<br>→ lands ${fmt(arrive)}`};
+}
+
+function dropCard(d){
+  const card=document.createElement('div');
+  card.className='dropcard'+(selected&&selected.id===d.id?' sel':'');
+  const s=schedLabel(d);
+  card.innerHTML=`
+    <div class="dc-top">
+      <span class="dc-sched ${s.cls}">${s.html}</span>
+      <span class="dc-chan">
+        <button data-ch="letter" class="${d.channel==='letter'?'on':''}" title="Postal letter">${MAIL_ICON}</button>
+        <button data-ch="email"  class="${d.channel==='email'?'on':''}"  title="Email">${EMAIL_ICON}</button>
+      </span>
+    </div>
+    <div class="dc-body">
+      <div class="dc-f"><label>Records</label>
+        <input type="number" class="dc-rec" min="1" step="50" value="${d.letters}"></div>
+      <div class="dc-f"><label>Requested send date</label>
+        <input type="date" class="dc-date" value="${d.date}"></div>
+    </div>
+    <div class="dc-bottom">
+      <div class="dc-f" style="flex:1"><label>Campaign</label>
+        <select class="dc-camp">${CAMP_OPTS}</select></div>
+      <span class="dc-del" title="Remove drop">✕</span>
+    </div>`;
+  card.querySelector('.dc-camp').value=d.campaign;
+
+  const reselect=()=>{ selected=d; loadPreset(d.campaign,true); };
+  card.querySelectorAll('.dc-chan button').forEach(b=>b.onclick=()=>{
+    d.channel=b.dataset.ch; reselect(); renderDrops(); invalidate(); });
+  card.querySelector('.dc-camp').onchange=e=>{ d.campaign=e.target.value; reselect(); renderDrops(); invalidate(); };
+  card.querySelector('.dc-rec').onchange=e=>{ d.letters=+e.target.value||0; invalidate(); };
+  card.querySelector('.dc-date').onchange=e=>{ d.date=e.target.value; renderDrops(); invalidate(); };
+  card.querySelector('.dc-del').onclick=()=>{ drops=drops.filter(x=>x.id!==d.id);
+    if(selected&&selected.id===d.id) selected=null; renderDrops(); invalidate(); };
+  // clicking the card body (not a control) selects it for the parameter panel
+  card.onclick=e=>{ if(e.target.closest('input,select,button,.dc-del')) return; reselect(); renderDrops(); };
+  return card;
+}
+
+function addDropTo(cl){
+  const existing=drops.filter(x=>x.client===cl);
+  const camp = existing.length ? existing[existing.length-1].campaign : 'mortgage';
+  const d={id:Date.now()+Math.random(), client:cl, campaign:camp, channel:'letter',
+           letters:1000, date:'2026-09-14'};
+  drops.push(d); selected=d; expanded.add(cl); loadPreset(camp,true);
+  renderDrops(); invalidate();
+}
+
+function renderInbound(){
+  const host=document.getElementById('inboundList'); host.innerHTML='';
+  const by={}; inbounds.forEach(c=>(by[c.client]=by[c.client]||[]).push(c));
+  Object.keys(by).sort(clientSort).forEach(cl=>{
+    const list=by[cl];
+    const perDay=list.reduce((s,c)=>s+(c.unit==='month'?c.vol/21:c.vol),0);
+    const key='in:'+cl;
+    const el=document.createElement('div'); el.className='client'+(expanded.has(key)?' open':'');
+    el.innerHTML=`<div class="client-hd">
+      <span class="lead"><span class="chev">▶</span><span>${cl}</span></span>
+      <span class="n">${list.length} line${list.length>1?'s':''} · ≈${Math.round(perDay).toLocaleString()} calls/working day</span></div>`;
+    el.querySelector('.client-hd').onclick=()=>{
+      expanded.has(key)?expanded.delete(key):expanded.add(key); el.classList.toggle('open');
+    };
+    const body=document.createElement('div'); body.className='client-body'; el.appendChild(body);
+    list.forEach(c=>{
+      const r=document.createElement('div'); r.className='drop';
+      r.style.gridTemplateColumns='1fr 128px 108px 150px 30px';
+      r.innerHTML=`<div><span class="tag" style="background:#E2F4F6;color:#0E7C89">inbound</span> ${c.name}</div>
+        <div>${c.vol.toLocaleString()} / ${c.unit==='month'?'month':'day'}</div>
+        <div style="color:var(--muted)">${c.aht} min AHT</div>
+        <div class="arr">${new Date(c.from).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} → ${c.to?new Date(c.to).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'ongoing'}</div>
+        <div class="del" data-del="1">✕</div>`;
+      r.onclick=e=>{ if(e.target.dataset.del){ inbounds=inbounds.filter(x=>x.id!==c.id); renderInbound(); invalidate(); } };
+      body.appendChild(r);
+    });
+    host.appendChild(el);
+  });
+  if(!inbounds.length) host.innerHTML='<p class="hint">No inbound campaigns yet. These run continuously alongside the outbound drops.</p>';
+  refreshClientList();
+}
+
+/* ══════════ chart ══════════ */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d'), tip=document.getElementById('tip');
+function draw(){
+  const W=cv.width,H=cv.height,padL=96,padB=76,padT=48,padR=26,pw=W-padL-padR,ph=H-padT-padB;
+  ctx.clearRect(0,0,W,H); if(!sim) return;
+  const s=win*WIN, days=[...Array(WIN).keys()].map(i=>s+i).filter(d=>d<HORIZON);
+  const maxA=Math.max(4, P.maxAgents+1, ...days.map(d=>sim[d].agents)), bw=pw/days.length;
+  ctx.font='22px ui-monospace,monospace'; ctx.textAlign='right';
+  const step=maxA>20?5:maxA>10?2:1;
+  for(let a=0;a<=maxA;a+=step){
+    const y=padT+ph-(a/maxA)*ph;
+    ctx.strokeStyle='#EDF1F8'; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.fillStyle='#8A93A6'; ctx.fillText(a,padL-14,y+8);
+  }
+  ctx.textAlign='center';
+  days.forEach((d,i)=>{
+    const x=padL+i*bw, cx=x+bw/2;
+    if(isWeekend(d)){
+      ctx.fillStyle='#F2F5FA'; ctx.fillRect(x+2,padT,bw-4,ph);
+      ctx.fillStyle='#C3CBD9'; ctx.font='19px ui-monospace,monospace'; ctx.fillText('weekend',cx,padT+ph/2);
+    } else {
+      const b=sim[d];
+      if(b.total>0.5){
+        let acc=0; const u=(b.agents/maxA)*ph/Math.max(b.total,1e-6);
+        const segs=SEG.filter(g=>b[g.k]>0);
+        segs.forEach((g,si)=>{ const v=b[g.k]; const h=v*u;
+          const gap = si<segs.length-1 ? 2 : 0;   // 2px surface gap between stacked fills
+          ctx.fillStyle=g.c; ctx.fillRect(x+bw*0.16, padT+ph-acc-h+gap, bw*0.68, Math.max(h-gap,0.5)); acc+=h; });
+        ctx.fillStyle='#16202E'; ctx.font='bold 21px ui-monospace,monospace';
+        ctx.fillText(b.agents,cx,padT+ph-acc-10);
+        if(b.overflow){
+          ctx.fillStyle='#d03b3b'; ctx.font='bold 17px ui-monospace,monospace';
+          ctx.fillText('▲'+Math.round(b.backlog).toLocaleString(),cx,padT+ph-acc-32);
+        }
+      }
+      /* status dots — drawn in the top margin, above the plot so they never sit on a label.
+         red: a first call is >5 working days overdue · green: a drop finished all 5 attempts */
+      const red=b.excessWait>5, green=b.finished.length>0, dotY=20;
+      if(red||green){
+        const xs = (red&&green) ? [cx-12,cx+12] : [cx];
+        let k=0;
+        if(red){ ctx.beginPath(); ctx.arc(xs[k++],dotY,8,0,Math.PI*2);
+          ctx.fillStyle='#d03b3b'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2.5; ctx.stroke(); ctx.lineWidth=1; }
+        if(green){ ctx.beginPath(); ctx.arc(xs[k],dotY,8,0,Math.PI*2);
+          ctx.fillStyle='#0ca30c'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2.5; ctx.stroke(); ctx.lineWidth=1; }
+      }
+    }
+    if(hover===d){ ctx.strokeStyle='#1F4FD8'; ctx.lineWidth=2; ctx.strokeRect(x+2,padT,bw-4,ph); ctx.lineWidth=1; }
+    ctx.fillStyle=isWeekend(d)?'#C3CBD9':'#55607A'; ctx.font='19px ui-monospace,monospace';
+    ctx.fillText(dayName(d),cx,H-44);
+    ctx.fillStyle='#8A93A6'; ctx.font='18px ui-monospace,monospace'; ctx.fillText(fmt(d),cx,H-20);
+  });
+  /* capacity ceiling — solid warning when capped, faint reference when uncapped */
+  const capY = padT+ph-(P.maxAgents/maxA)*ph;
+  if(capY>padT-2){
+    ctx.strokeStyle = capped ? '#d03b3b' : '#C6CEDC';
+    ctx.setLineDash([9,7]); ctx.lineWidth = capped ? 2.2 : 1.8;
+    ctx.beginPath(); ctx.moveTo(padL,capY); ctx.lineTo(W-padR,capY); ctx.stroke();
+    ctx.setLineDash([]); ctx.lineWidth=1;
+    ctx.fillStyle = capped ? '#d03b3b' : '#98A2B4';
+    ctx.font='bold 19px ui-monospace,monospace'; ctx.textAlign='right';
+    ctx.fillText(capped ? `capacity ${P.maxAgents} agents`
+                        : `capacity ${P.maxAgents} agents (not enforced)`, W-padR-6, capY-9);
+  }
+  ctx.textAlign='left'; ctx.fillStyle='#8A93A6'; ctx.font='19px ui-monospace,monospace';
+  ctx.fillText(capped?'agents used':'agents needed',padL-88,padT-6);
+}
+cv.onmousemove=e=>{
+  if(!sim) return;
+  const d=dayFromX(e.clientX);
+  if(d<0){ hover=-1; tip.style.opacity=0; draw(); return; }
+  hover=d; draw();
+  const b=sim[d];
+  if(isWeekend(d)||b.total<0.5){ tip.style.opacity=0; return; }
+  tip.innerHTML=breakdownHTML(d);
+  tip.style.opacity=1;
+  const w=tip.offsetWidth, h=tip.offsetHeight;
+  let L=e.clientX+18; if(L+w>innerWidth-10) L=e.clientX-w-18;
+  let T=e.clientY+14; if(T+h>innerHeight-10) T=Math.max(10, innerHeight-h-10);
+  tip.style.left=Math.max(10,L)+'px'; tip.style.top=T+'px';
+};
+cv.onmouseleave=()=>{ hover=-1; tip.style.opacity=0; draw(); };
+
+/* ══════════ per-campaign attempt breakdown ══════════ */
+const CAMP_COLOR={mortgage:"#1F4FD8",pension:"#7C3AED",insurance:"#0E8F9E",cremation:"#D97706"};
+const ORD=["1st","2nd","3rd","4th","5th"];
+let picked = -1;
+
+function dayFromX(clientX){
+  const r=cv.getBoundingClientRect(), sc=cv.width/r.width, x=(clientX-r.left)*sc;
+  const padL=96, pw=cv.width-padL-26, s=win*WIN;
+  const days=[...Array(WIN).keys()].map(i=>s+i).filter(d=>d<HORIZON);
+  const i=Math.floor((x-padL)/(pw/days.length));
+  return (i<0||i>=days.length) ? -1 : days[i];
+}
+function breakdownHTML(d){
+  if(!sim||d<0) return '';
+  const b=sim[d];
+  let h=`<div class="detail-hd">
+      <span class="d">${dayName(d)} ${fmtLong(d)}</span>
+      <span class="s">${b.agents}/${P.maxAgents} agents · ${b.hours.toFixed(1)} of ${b.capH.toFixed(0)} h
+      · ${Math.round(b.total).toLocaleString()} calls</span>
+    </div>`;
+  if(capped && b.agents>P.maxAgents){
+    const ibH=Object.entries(b.byInb).reduce((s,[id,v])=>{
+      const ic=inbounds.find(z=>String(z.id)===String(id)); return s+(ic?v*ic.aht/60:0);},0);
+    h+=`<div style="background:#FBEEF6;border:1px solid #EBCBE0;color:#8A2E6B;border-radius:7px;
+        padding:7px 9px;font-size:11.5px;margin-bottom:8px">
+        <b>Understaffed for contractual inbound.</b> Inbound alone needs
+        ${Math.ceil(ibH/P.shift)} agents — above your ceiling of ${P.maxAgents}.
+        A ringing phone can't be rolled to tomorrow, so this demand can't be deferred.</div>`;
+  }
+  if(b.excessWait>5) h+=`<div style="background:#FDECEC;border:1px solid #F5C9C9;color:#A32E2E;
+      border-radius:7px;padding:7px 9px;font-size:11.5px;margin-bottom:8px;display:flex;gap:7px">
+      <span style="flex:none;width:9px;height:9px;border-radius:50%;background:#d03b3b;margin-top:3px"></span>
+      <span><b>Too many letters out for this many agents.</b>
+      ${Math.round(b.excessOver5).toLocaleString()} people had a letter land more than 5 working days ago and
+      still haven't had a first call — the longest has been waiting <b>${b.excessWait} working days</b>.</span></div>`;
+  else if(b.overflow) h+=`<div style="background:#FEF7EC;border:1px solid #F2DFC0;color:#8A5A15;
+      border-radius:7px;padding:6px 9px;font-size:11.5px;margin-bottom:8px">
+      <b>${Math.round(b.backlog).toLocaleString()} calls</b> couldn't be worked today
+      (${b.backlogH.toFixed(1)} h) — rolled to the next working day.</div>`;
+  if(isWeekend(d)) return h+`<p class="none">Weekend — no calling.</p>`;
+
+  if(b.finished.length){
+    const names=b.finished.map(id=>{const dr=drops.find(x=>x.id===id);
+      return dr?`${dr.client} · ${LABEL[dr.campaign]} (drop ${fmt(resolveArrival(dr.date,dr.channel).arrive)})`:'';})
+      .filter(Boolean);
+    h+=`<div style="background:#E9F8F1;border:1px solid #BFE8D6;color:#0E6B4C;border-radius:7px;
+        padding:7px 9px;font-size:11.5px;margin-bottom:8px;display:flex;gap:7px">
+        <span style="flex:none;width:9px;height:9px;border-radius:50%;background:#0ca30c;margin-top:3px"></span>
+        <span><b>Fully worked${names.length>1?' ('+names.length+' drops)':''}:</b> ${names.join(' · ')}
+        — all five attempts complete.</span></div>`;
+  }
+
+  h+=`<div class="crow head"><div></div>${ORD.map(o=>`<div class="t-h">${o} attempt</div>`).join('')}</div>`;
+  let any=false;
+  drops.forEach(dr=>{
+    const arr=b.byCamp[dr.id];
+    const rowTotal=arr?arr.reduce((s,v)=>s+v,0):0;
+    if(rowTotal<0.5) return;               // campaign not active today
+    any=true;
+    h+=`<div class="crow">
+      <div class="cname"><i style="background:${CAMP_COLOR[dr.campaign]}"></i>
+        <span>${dr.client} · ${LABEL[dr.campaign]}
+        <span style="color:var(--faint);font-weight:400">· drop ${fmt(resolveArrival(dr.date,dr.channel).arrive)}</span>
+        </span></div>`;
+    for(let i=0;i<5;i++){
+      const v=arr[i]||0, on=v>=0.5;
+      h+=`<div class="box${on?'':' off'}"><div class="v">${on?Math.round(v).toLocaleString():'0'}</div>
+          <div class="t">${ORD[i]}</div></div>`;
+    }
+    h+=`</div>`;
+  });
+  if(!any) h+=`<p class="none">No outbound call attempts scheduled on this day.</p>`;
+
+  const inbToday=inbounds.filter(ic=>(b.byInb[ic.id]||0)>=0.5);
+  if(inbToday.length){
+    h+=`<div style="margin-top:13px;font-family:var(--mono);font-size:10px;letter-spacing:.07em;
+         text-transform:uppercase;color:var(--faint);margin-bottom:7px">Inbound campaigns</div>`;
+    inbToday.forEach(ic=>{
+      const v=b.byInb[ic.id];
+      h+=`<div class="crow" style="grid-template-columns:230px 1fr">
+        <div class="cname"><i style="background:#0E8F9E"></i><span>${ic.client} · ${ic.name}</span></div>
+        <div class="box" style="text-align:left;padding-left:12px">
+          <div class="v" style="font-size:11.8px">${Math.round(v).toLocaleString()} calls
+          <span style="font-weight:400;color:var(--faint)">· ${ic.aht} min AHT
+          · ${(v*ic.aht/60).toFixed(1)} h</span></div></div></div>`;
+    });
+  }
+  return h;
+}
+
+/* ══════════ run ══════════ */
+/* last day carrying OUTBOUND work — inbound lines run indefinitely so they can't define the end */
+const OUT_KEYS=["a0","a1","a2","a3","a4","inb","cb"];
+function outboundEnd(){
+  for(let i=HORIZON-1;i>=0;i--) if(OUT_KEYS.reduce((s,k)=>s+sim[i][k],0)>0.5) return i;
+  return 0;
+}
+function updateWin(){
+  const a=win*WIN, b=Math.min((win+1)*WIN,HORIZON)-1;
+  document.getElementById('winLbl').textContent=`${fmtLong(a)} → ${fmtLong(b)}`;
+  draw();
+  if(sim && statsScope==='window') renderStats();
+}
+function run(){
+  if(!drops.length && !inbounds.length){ alert('Add at least one outbound drop or inbound campaign first.'); return; }
+  simCapped   = simulate(false);
+  simUncapped = simulate(true);
+  sim = capped ? simCapped : simUncapped;
+  document.getElementById('msg').classList.add('hidden');
+  document.getElementById('chartWrap').classList.remove('hidden');
+  document.getElementById('winNav').classList.remove('hidden');
+  document.getElementById('runBtn').classList.remove('stale');
+  const first=sim.findIndex(b=>b.total>0.5);
+  win = first>0 ? Math.floor(first/WIN) : 0;
+  updateWin();
+  document.getElementById('legend').innerHTML=
+    SEG.map(g=>`<span><i style="background:${g.c}"></i>${g.label}</span>`).join('')+
+    `<span><i style="background:#F2F5FA;border:1px solid #E2E8F2"></i>weekend — no calling</span>`+
+    `<span><i style="background:#d03b3b;border-radius:50%"></i>1st call >5 working days overdue</span>`+
+    `<span><i style="background:#0ca30c;border-radius:50%"></i>drop fully worked — all 5 attempts done</span>`;
+  renderStats();
+  analyzeChokes();
+}
+
+/* ══════════ flow-choke optimizer ══════════ */
+const SLA=5;                         // target: first call within 5 working days of landing
+const isoOf = idx => { const d=dateOf(idx);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+
+/* split one drop into k batches on consecutive weekly dispatch cycles */
+function splitDrop(drop, k){
+  const base = drop.channel==='letter'
+      ? resolveArrival(drop.date, drop.channel).dispatch   // a Tuesday
+      : idxOf(drop.date);
+  const batches=[]; let placed=0;
+  for(let j=0;j<k;j++){
+    const size = (j===k-1) ? drop.letters-placed : Math.round(drop.letters/k);
+    placed += size;
+    batches.push({id:drop.id+'-'+j+'-'+Math.random(), client:drop.client, campaign:drop.campaign,
+      channel:drop.channel, letters:size, date:isoOf(Math.min(HORIZON-1, base + 7*j))});
+  }
+  return batches;
+}
+
+/* best split (2..6 batches). resolved = every batch's 1st call lands within SLA;
+   if not, the choke is capacity-bound and splitting alone can't fix it. */
+function suggestSplit(drop){
+  const others = drops.filter(d=>d.id!==drop.id);
+  let best=null;
+  for(let k=2;k<=6;k++){
+    const batches=splitDrop(drop,k);
+    const s=simulate(false, others.concat(batches));
+    const worst=Math.max(0,...batches.map(b=>s.dropWait[b.id]||0));
+    if(best===null || worst<best.worst) best={k,batches,worst};
+    if(worst<=SLA) return {resolved:true,k,batches,worst};
+  }
+  return {resolved:false, ...best};
+}
+
+/* fewest agents that clears every drop within SLA (for capacity-bound chokes) */
+/* fewest agents that clears every drop within SLA — exponential probe then binary
+   search, so it costs ~log(range) sims instead of a linear scan (keeps live analysis snappy) */
+function minAgentsToClear(){
+  const save=P.maxAgents;
+  const clears=a=>{ P.maxAgents=a; const s=simulate(false);
+    return Math.max(0,...drops.map(d=>s.dropWait[d.id]||0))<=SLA; };
+  let hi=save+1, ok=false;
+  while(hi<=save+256){ if(clears(hi)){ ok=true; break; } hi*=2; }
+  let ans=null;
+  if(ok){ let lo=Math.floor(hi/2);
+    while(lo+1<hi){ const mid=(lo+hi)>>1; if(clears(mid)) hi=mid; else lo=mid; }
+    ans=hi;
+  }
+  P.maxAgents=save;
+  return ans;
+}
+
+/* live analysis — runs its own capped sim off the CURRENT calendar + agents, so the
+   calendar's choke box stays in sync without waiting for a full chart Run */
+let analyzeTimer=null;
+function scheduleAnalyze(){ clearTimeout(analyzeTimer); analyzeTimer=setTimeout(analyzeChokes, 140); }
+
+function analyzeChokes(){
+  const body=document.getElementById('chokeBox');
+  if(!body) return;
+  if(!drops.length){ body.innerHTML=''; return; }
+  const head=`<div style="font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+      color:var(--faint);font-weight:600;margin-bottom:9px">Flow-choke optimizer · ${P.maxAgents} agents</div>`;
+
+  const wait=simulate(false).dropWait||{};
+  const choked=drops.filter(d=>(wait[d.id]||0)>SLA)
+                    .sort((a,b)=>(wait[b.id]||0)-(wait[a.id]||0));
+  if(!choked.length){
+    body.innerHTML=head+`<div class="opt-ok">
+      <span style="flex:none;width:11px;height:11px;border-radius:50%;background:#0ca30c"></span>
+      <span><b>No chokes.</b> Every drop's first calls happen within ${SLA} working days of landing at
+      ${P.maxAgents} agents. Nothing to split.</span></div>`;
+    return;
+  }
+
+  const splittable=[], capBound=[];
+  choked.forEach(d=>{ const sug=suggestSplit(d); (sug.resolved?splittable:capBound).push({d,sug}); });
+
+  let html='';
+  splittable.forEach(({d,sug})=>{
+    const late=Math.round(wait[d.id]||0), land=fmt(resolveArrival(d.date,d.channel).arrive);
+    const chips=sug.batches.map(b=>`<span class="b">${b.letters.toLocaleString()} rec ·
+      <span class="d">lands ${fmt(resolveArrival(b.date,b.channel).arrive)}</span></span>`).join('');
+    html+=`<div class="sugg" data-drop="${d.id}">
+      <div class="sugg-hd">
+        <div class="sugg-problem"><b>${d.client} · ${LABEL[d.campaign]}</b> —
+          ${d.letters.toLocaleString()} records landing ${land}. This single drop swamps the floor:
+          first calls run up to <b>${late} working days late</b>.</div>
+        <button class="applybtn" data-drop="${d.id}">Apply split</button>
+      </div>
+      <div class="sugg-fix">Split into <b>${sug.k} batches</b> of ~${Math.round(d.letters/sug.k).toLocaleString()}
+        on consecutive dispatch cycles → every first call within <b>${sug.worst} working day${sug.worst===1?'':'s'}</b>.
+        <div class="batches">${chips}</div></div>
+    </div>`;
+  });
+
+  if(capBound.length){
+    const need=minAgentsToClear();
+    const names=capBound.map(({d})=>`${d.client} · ${LABEL[d.campaign]}`).join(', ');
+    html+=`<div class="sugg" style="border-color:#E7C7C7;background:#FDF3F3">
+      <div class="sugg-problem"><b style="color:#A32E2E">Capacity-bound — splitting won't help.</b>
+        ${capBound.length===1?'This choke is':'These chokes are'} caused by too little total capacity across the
+        period, not a single bursty drop: ${names}. Staggering just pushes the calls into an equally busy week.</div>
+      <div class="sugg-fix">To clear every drop within ${SLA} working days you need
+        ${need?`about <b>${need} agents</b> (currently ${P.maxAgents})`:`<b>more than ${P.maxAgents+60} agents</b>`}
+        — or fewer letters in the calendar.</div>
+    </div>`;
+  }
+
+  const applyAll = splittable.length>1
+    ? `<button class="applybtn opt-all" id="applyAll">Apply all ${splittable.length} splits</button>` : '';
+  body.innerHTML=head+html+applyAll;
+
+  body.querySelectorAll('.applybtn[data-drop]').forEach(btn=>btn.onclick=()=>{
+    const d=drops.find(x=>String(x.id)===btn.dataset.drop); if(!d) return;
+    applySplit(d); renderDrops(); invalidate(); analyzeChokes();
+  });
+  const aa=document.getElementById('applyAll');
+  if(aa) aa.onclick=()=>{ splittable.forEach(({d})=>{ const cur=drops.find(x=>x.id===d.id); if(cur) applySplit(cur); });
+    renderDrops(); invalidate(); analyzeChokes(); };
+}
+
+function applySplit(drop){
+  const sug=suggestSplit(drop);
+  drops=drops.filter(x=>x.id!==drop.id).concat(sug.batches);
+  if(selected&&selected.id===drop.id) selected=null;
+}
+
+let statsScope='window';   // 'window' | 'all'
+
+function renderStats(){
+  const allDays=[...Array(HORIZON).keys()];
+  const days = statsScope==='all'
+      ? allDays
+      : allDays.slice(win*WIN, Math.min((win+1)*WIN, HORIZON));
+  const D=days.map(i=>sim[i]);
+  const work=days.filter(i=>!isWeekend(i)&&sim[i].total>0.5).map(i=>sim[i]);
+  const peak=Math.max(0,...D.map(b=>b.agents));
+  const avg=work.length?work.reduce((s,b)=>s+b.agents,0)/work.length:0;
+  const overDays=D.filter(b=>b.overflow).length;
+  const peakBack=Math.max(0,...D.map(b=>b.backlog));
+  const worstWait=Math.max(0,...D.map(b=>b.worstWait));
+  const excessDays=D.filter(b=>b.excessWait>5).length;
+  const worked=D.reduce((s,b)=>s+b.total,0);
+  // last outbound-active day within the scope
+  let lastOut=-1;
+  for(let k=days.length-1;k>=0;k--){ const i=days[k];
+    if(OUT_KEYS.reduce((s,K)=>s+sim[i][K],0)>0.5){ lastOut=i; break; } }
+  const globalEnd=outboundEnd();
+  const clearsCell = statsScope==='all'
+      ? `<div class="stat"><div class="n">${fmt(globalEnd)}</div><div class="l">outbound work clears</div></div>`
+      : `<div class="stat"><div class="n">${lastOut<0?'—':(globalEnd>days[days.length-1]?'ongoing':fmt(lastOut))}</div><div class="l">outbound active to</div></div>`;
+
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="n">${peak}</div><div class="l">${capped?'peak agents used':'peak agents NEEDED'}</div></div>
+    <div class="stat"><div class="n">${avg.toFixed(1)}</div><div class="l">avg agents / working day</div></div>
+    <div class="stat"><div class="n" style="color:${overDays?'var(--warn)':'inherit'}">${overDays}</div><div class="l">days with rollover</div></div>
+    <div class="stat"><div class="n" style="color:${peakBack>0.5?'var(--warn)':'inherit'}">${Math.round(peakBack).toLocaleString()}</div><div class="l">peak calls waiting</div></div>
+    <div class="stat"><div class="n" style="color:${worstWait>2?'var(--warn)':'inherit'}">${worstWait}</div><div class="l">worst wait for a 1st call (working days)</div></div>
+    <div class="stat"><div class="n" style="color:${excessDays?'var(--warn)':'inherit'}">${excessDays}</div><div class="l">days flagged: too many letters out</div></div>
+    <div class="stat"><div class="n">${Math.round(worked).toLocaleString()}</div><div class="l">calls worked</div></div>
+    ${clearsCell}`;
+}
+function setScope(s){
+  statsScope=s;
+  document.getElementById('scopeWin').classList.toggle('on',s==='window');
+  document.getElementById('scopeAll').classList.toggle('on',s==='all');
+  if(sim) renderStats();
+}
+
+function setCapped(v){
+  capped=v;
+  document.getElementById('tabCap').classList.toggle('on',v);
+  document.getElementById('tabUncap').classList.toggle('on',!v);
+  if(simCapped){ sim = v?simCapped:simUncapped; renderStats(); draw(); }
+}
+document.getElementById('tabCap').onclick=()=>setCapped(true);
+document.getElementById('tabUncap').onclick=()=>setCapped(false);
+document.getElementById('scopeWin').onclick=()=>setScope('window');
+document.getElementById('scopeAll').onclick=()=>setScope('all');
+document.getElementById('prevW').onclick=()=>{ if(win>0){win--;updateWin();} };
+document.getElementById('nextW').onclick=()=>{ if((win+1)*WIN<HORIZON){win++;updateWin();} };
+document.getElementById('runBtn').onclick=run;
+document.getElementById('resetBtn').onclick=()=>loadPreset(selected?selected.campaign:'mortgage');
+
+/* create a new outbound umbrella */
+function createUmbrella(){
+  const inp=document.getElementById('newClientName'), name=inp.value.trim();
+  if(!name){ inp.focus(); return; }
+  outGroups.add(name); expanded.add(name); inp.value=''; renderDrops();
+  const el=[...document.querySelectorAll('#clientList .client')]
+    .find(x=>x.querySelector('.lead span:nth-child(2)')?.textContent===name);
+  if(el){ el.scrollIntoView({block:'center'}); el.querySelector('.addbtn').click(); }
+}
+document.getElementById('newClientBtn').onclick=createUmbrella;
+document.getElementById('newClientName').onkeydown=e=>{ if(e.key==='Enter') createUmbrella(); };
+
+/* tab switching */
+document.getElementById('tabOut').onclick=()=>{
+  document.getElementById('tabOut').classList.add('on'); document.getElementById('tabIn').classList.remove('on');
+  document.getElementById('sideOut').classList.add('on'); document.getElementById('sideIn').classList.remove('on');
+};
+document.getElementById('tabIn').onclick=()=>{
+  document.getElementById('tabIn').classList.add('on'); document.getElementById('tabOut').classList.remove('on');
+  document.getElementById('sideIn').classList.add('on'); document.getElementById('sideOut').classList.remove('on');
+};
+document.getElementById('addInbound').onclick=()=>{
+  const c={id:Date.now()+Math.random(), client:document.getElementById('iClient').value.trim()||'Unnamed client',
+    name:document.getElementById('iName').value.trim()||'Inbound line',
+    vol:+document.getElementById('iVol').value||0, unit:document.getElementById('iUnit').value,
+    aht:+document.getElementById('iAht').value||0, from:document.getElementById('iFrom').value,
+    to:document.getElementById('iTo').value||null};
+  if(!c.vol||!c.aht||!c.from){ alert('Need a volume, handling time and start date.'); return; }
+  inbounds.push(c); renderInbound(); invalidate();
+};
+
+document.getElementById('demoBtn').onclick=()=>{
+  /* inbound runs under its own set of clients, distinct from the outbound umbrellas */
+  inbounds=[
+    {id:101,client:'Client T',name:'Service line',      vol:70,  unit:'day',  aht:6,   from:'2026-09-07',to:null},
+    {id:102,client:'Client R',name:'Claims intake',     vol:1400,unit:'month',aht:9.5, from:'2026-09-07',to:null},
+    {id:103,client:'Client Z',name:'Seasonal overflow', vol:60,  unit:'day',  aht:4.5, from:'2026-10-01',to:'2026-12-18'}
+  ];
+  /* each outbound client normally runs one product line; "Other" is the miscellaneous bucket */
+  outGroups = new Set(['Client A','Client B','Client C','Client F','Other']);
+  drops=[
+    {id:1,client:'Client A',campaign:'mortgage', channel:'letter',letters:1400,date:'2026-09-09'},
+    {id:2,client:'Client A',campaign:'mortgage', channel:'letter',letters:1100,date:'2026-09-23'},
+    {id:3,client:'Client A',campaign:'mortgage', channel:'email', letters:900, date:'2026-09-15'},
+    {id:4,client:'Client B',campaign:'insurance',channel:'letter',letters:4200,date:'2026-09-14'},
+    {id:5,client:'Client B',campaign:'insurance',channel:'letter',letters:1200,date:'2026-10-13'},
+    {id:6,client:'Client C',campaign:'pension',  channel:'letter',letters:1600,date:'2026-09-28'},
+    {id:7,client:'Client F',campaign:'cremation',channel:'letter',letters:650, date:'2026-10-12'},
+    {id:8,client:'Other',   campaign:'pension',  channel:'email', letters:400, date:'2026-09-21'}
+  ];
+  selected=drops[0]; loadPreset('mortgage'); setCap(8); renderDrops(); renderInbound(); run();
+};
+
+buildGrid(); loadPreset('mortgage'); setCap(10); renderDrops(); renderInbound(); analyzeChokes();
+document.getElementById('msgBig').textContent='Add a drop, then press Run simulation.';
+document.getElementById('msgSmall').textContent='Results appear here.';
+document.getElementById('msg').classList.remove('stale');
+document.getElementById('runBtn').classList.remove('stale');
+document.getElementById('winNav').classList.add('hidden');
+</script>
+</body>
+</html>
