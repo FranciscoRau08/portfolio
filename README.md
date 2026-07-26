@@ -1,26 +1,37 @@
-# Portfolio site — franciscorau
+# franciscorau.com — portfolio
 
-One self-contained `index.html`. No build step, no dependencies.
+Hand-written HTML/CSS/JS. No build step, no dependencies, no external requests.
 
-## Publish on GitHub Pages (5 minutes)
+| Page | What it is |
+|---|---|
+| `index.html` | Landing — three pillars |
+| `staffing-simulator.html` | Capacity / cohort funnel simulator |
+| `daily-agent-report.html` | Performance analytics (p70 frontier benchmarking) |
+| `wallboard.html` | Live ops TV board (supervisor edition) |
+| `unit-economics.html` | Floor P&L / unit-economics model |
+
+All contact-centre data is fictional; no employer or client data appears anywhere.
+
+## Publish
 
 ```bash
-cd ~/Downloads/portfolio-site
-git init && git add index.html README.md && git commit -m "Portfolio site"
-# create the repo on github.com: FranciscoRau08/portfolio (public), then:
-git remote add origin https://github.com/FranciscoRau08/portfolio.git
+git remote add origin https://github.com/FranciscoRau08/<repo>.git
 git branch -M main && git push -u origin main
 ```
 
-Then on GitHub: repo → **Settings → Pages → Source: Deploy from a branch → main / (root)**.
-Live a minute later at **https://franciscorau08.github.io/portfolio/**
+Then **Settings → Pages → Deploy from a branch → main / (root)**, and
+**Settings → Pages → Custom domain → franciscorau.com** (the `CNAME` file is already committed).
 
-## After it's live
+DNS at the registrar — apex `A` records to GitHub Pages:
 
-1. LinkedIn → **Featured** → Add link → the Pages URL.
-2. Add the URL to both CVs (contact line).
-3. Optional: make the Weatherbot repo public and add a link to its card in
-   `index.html` (it currently has no repo link because the repo is private).
+```
+185.199.108.153
+185.199.109.153
+185.199.110.153
+185.199.111.153
+```
+
+plus `www` as a `CNAME` to `franciscorau08.github.io`. Enable **Enforce HTTPS** once the certificate is issued.
 
 ## Preview locally
 
