@@ -42,6 +42,12 @@
   button.ghost:hover{border-color:var(--accent);color:var(--accent)}
   button.run{padding:11px 28px;font-size:15px}
   button.run.stale{animation:pulse 1.6s infinite}
+  button.run.attn{animation:pulse 1.6s infinite}
+  .simprog{display:none;margin:14px auto 4px;max-width:420px;height:10px;
+           border-radius:6px;background:#E7ECF5;overflow:hidden}
+  .simprog.on{display:block}
+  .simprog i{display:block;height:100%;width:0%;background:var(--accent);
+             border-radius:6px;transition:width .08s linear}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(31,79,216,.45)}50%{box-shadow:0 0 0 7px rgba(31,79,216,0)}}
 
   .client{border:1px solid var(--line);border-radius:10px;margin-top:10px;overflow:hidden}
@@ -335,6 +341,7 @@
   <div class="msg" id="msg">
     <div class="big" id="msgBig">Add a drop, then press Run simulation.</div>
     <div class="small" id="msgSmall">Results appear here.</div>
+    <div class="simprog" id="simProg"><i id="simBar"></i></div>
   </div>
 </div>
 
@@ -1189,7 +1196,9 @@ document.getElementById('addInbound').onclick=()=>{
   inbounds.push(c); renderInbound(); invalidate();
 };
 
-document.getElementById('demoBtn').onclick=()=>{
+/* load the demo mailing calendar WITHOUT running — the visitor presses
+   Run simulation themselves and watches the engine work */
+function loadDemo(){
   /* inbound runs under its own set of clients, distinct from the outbound umbrellas */
   inbounds=[
     {id:101,client:'Client T',name:'Service line',      vol:70,  unit:'day',  aht:6,   from:'2026-09-07',to:null},
@@ -1208,15 +1217,58 @@ document.getElementById('demoBtn').onclick=()=>{
     {id:7,client:'Client F',campaign:'cremation',channel:'letter',letters:650, date:'2026-10-12'},
     {id:8,client:'Other',   campaign:'pension',  channel:'email', letters:400, date:'2026-09-21'}
   ];
-  selected=drops[0]; loadPreset('mortgage'); setCap(8); renderDrops(); renderInbound(); run();
-};
+  selected=drops[0]; loadPreset('mortgage'); setCap(8); renderDrops(); renderInbound();
+  sim = simCapped = simUncapped = null;
+  document.getElementById('chartWrap').classList.add('hidden');
+  document.getElementById('winNav').classList.add('hidden');
+  const m=document.getElementById('msg');
+  m.classList.remove('hidden','stale');
+  document.getElementById('msgBig').textContent='Demo campaign loaded — press ▶ Run simulation.';
+  document.getElementById('msgSmall').textContent=
+    'A realistic mailing calendar is pre-loaded: 5 outbound clients, 3 inbound lines, 500 days of horizon. Tweak anything, then run.';
+  document.getElementById('runBtn').classList.add('attn');
+  analyzeChokes();
+}
+document.getElementById('demoBtn').onclick=loadDemo;
 
-buildGrid(); loadPreset('mortgage'); setCap(10); renderDrops(); renderInbound(); analyzeChokes();
-document.getElementById('msgBig').textContent='Add a drop, then press Run simulation.';
-document.getElementById('msgSmall').textContent='Results appear here.';
-document.getElementById('msg').classList.remove('stale');
-document.getElementById('runBtn').classList.remove('stale');
-document.getElementById('winNav').classList.add('hidden');
+/* the visible run: a short day-sweep animation, then the real results.
+   The maths is instant — the sweep makes the simulation legible. */
+let animating=false;
+function runAnimated(){
+  if(animating) return;
+  if(!drops.length && !inbounds.length){ alert('Add at least one outbound drop or inbound campaign first.'); return; }
+  animating=true;
+  const btn=document.getElementById('runBtn');
+  btn.classList.remove('attn','stale'); btn.disabled=true;
+  const m=document.getElementById('msg');
+  m.classList.remove('hidden','stale');
+  const prog=document.getElementById('simProg'), bar=document.getElementById('simBar');
+  prog.classList.add('on');
+  document.getElementById('msgSmall').textContent=
+    'Cohort funnels, pickup decay, callbacks re-entering on their promised dates.';
+  /* time-driven, not frame-driven: rAF freezes in background tabs and
+     would leave the button locked — an interval always completes */
+  const DUR=1900, t0=performance.now();
+  const finish=()=>{
+    if(!animating) return;
+    clearInterval(iv); clearTimeout(guard);
+    prog.classList.remove('on'); bar.style.width='0%';
+    btn.disabled=false; animating=false;
+    run();
+  };
+  const iv=setInterval(()=>{
+    const p=Math.min(1,(performance.now()-t0)/DUR);
+    const eased=1-Math.pow(1-p,2.2);            // fast start, settling finish
+    bar.style.width=(eased*100).toFixed(1)+'%';
+    document.getElementById('msgBig').textContent=
+      `Simulating day ${Math.max(1,Math.round(eased*HORIZON))} / ${HORIZON}…`;
+    if(p>=1) finish();
+  },40);
+  const guard=setTimeout(finish, DUR+600);      // belt and braces
+}
+document.getElementById('runBtn').onclick=runAnimated;
+
+buildGrid(); loadDemo();
 </script>
 </body>
 </html>
