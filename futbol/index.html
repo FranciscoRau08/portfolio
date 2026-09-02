@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Francisco Rau — Football Data</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2714%27 fill=%27%230a0a0c%27/%3E%3Ctext x=%2732%27 y=%2744%27 font-family=%27monospace%27 font-size=%2734%27 font-weight=%27bold%27 fill=%27%23f5f5f7%27 text-anchor=%27middle%27%3E⚽%3C/text%3E%3C/svg%3E">
+<meta name="description" content="Francisco Rau — football recruitment analytics. Alpha Scout: 23,445 players valued across 155 leagues, forward-tested honestly.">
+<style>
+  :root{
+    --bg:#0a0a0c; --bg2:#0f0f13; --card:#131318; --line:#262630; --line2:#34343f;
+    --ink:#f5f5f7; --muted:#9a9aa7; --faint:#5f5f6b;
+    --red:#ff3b47; --redDim:rgba(255,59,71,.14); --redLine:rgba(255,59,71,.45);
+    --mono:ui-monospace,SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.6;font-size:16px;
+       -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(rgba(255,255,255,.028) 1px, transparent 1px);background-size:30px 30px}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 26px;position:relative;z-index:1}
+  a{color:inherit;text-decoration:none}
+  header{padding:96px 0 56px;position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+  header::before{content:"";position:absolute;top:-45%;right:-8%;width:640px;height:640px;pointer-events:none;
+    background:radial-gradient(circle,rgba(255,59,71,.16),transparent 62%);filter:blur(10px)}
+  .prompt{font-family:var(--mono);font-size:13px;letter-spacing:.06em;color:var(--muted);
+    display:inline-flex;align-items:center;gap:9px;margin-bottom:22px;
+    border:1px solid var(--line);border-radius:20px;padding:6px 14px;background:rgba(255,255,255,.02)}
+  .prompt .dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);
+    animation:blink 2.4s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+  h1{font-size:56px;line-height:1.05;letter-spacing:-.03em;font-weight:800}
+  .tagline{font-size:20px;color:var(--muted);margin-top:18px;max-width:640px;line-height:1.5}
+  .tagline b{color:var(--ink);font-weight:600}
+  .links{margin-top:28px;display:flex;flex-wrap:wrap;gap:12px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:10px;font-size:14.5px;
+       font-weight:600;border:1px solid var(--line2);transition:all .2s}
+  .btn.primary{background:var(--red);color:#fff;border-color:var(--red)}
+  .btn.primary:hover{background:#e62e3a;box-shadow:0 8px 26px rgba(255,59,71,.32);transform:translateY(-1px)}
+  .btn.ghost{color:var(--ink);background:rgba(255,255,255,.02)}
+  .btn.ghost:hover{border-color:var(--redLine);color:#fff}
+  section{padding:64px 0;position:relative;z-index:1}
+  .sec-label{font-family:var(--mono);font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--red);
+    display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .sec-label::before{content:"";width:26px;height:2px;background:var(--red);border-radius:2px}
+  h2{font-size:30px;letter-spacing:-.02em;font-weight:800}
+  h3{font-size:21px;margin-top:6px}
+  .sec-sub{color:var(--muted);margin-top:8px;max-width:660px;font-size:15.5px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:30px 0 0}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .stat .n{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--ink)}
+  .stat .l{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.4}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:30px;margin-top:28px}
+  .lead{color:var(--muted);margin-top:12px;font-size:15.5px}
+  .lead b{color:var(--ink)}
+  .feat ul{margin:16px 0 0 18px;color:var(--muted);font-size:15px}
+  .feat li{margin-top:9px}
+  .feat li b{color:var(--ink)}
+  .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:20px}
+  .shot{display:block;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg2);
+        transition:border-color .2s}
+  .shot:hover{border-color:var(--redLine)}
+  .shot img{width:100%;display:block}
+  .shot .cap{display:block;font-family:var(--mono);font-size:11.5px;color:var(--muted);padding:9px 12px;
+    border-top:1px solid var(--line)}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line);
+       border-radius:7px;padding:4px 10px;background:rgba(255,255,255,.02)}
+  .quote{border-left:3px solid var(--red);background:var(--redDim);border-radius:0 12px 12px 0;
+         padding:18px 22px;margin-top:26px;color:var(--ink);font-size:16.5px;font-style:italic}
+  footer{border-top:1px solid var(--line);padding:44px 0 60px;color:var(--faint);font-size:14px}
+  footer a{color:var(--muted)} footer a:hover{color:var(--ink)}
+  @media(max-width:640px){h1{font-size:38px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="prompt"><span class="dot"></span>franciscorau.com/futbol — football data hub</div>
+    <h1>Players, priced honestly.</h1>
+    <p class="tagline"><b>Francisco Rau</b> — economist and data scientist (MSc Data Science &amp; Society,
+    BSc Economics, Tilburg University) building <b>recruitment &amp; player-valuation analytics</b> as a
+    research programme. Solo: the data pipeline, the models, the validation and the product.</p>
+    <div class="links">
+      <a class="btn primary" href="https://alphascout.pages.dev" target="_blank" rel="noopener">Try Alpha Scout live →</a>
+      <a class="btn ghost" href="/cv/Francisco-Rau-CV-Football.pdf">Football CV (PDF)</a>
+      <a class="btn ghost" href="mailto:franciscorau08@gmail.com">franciscorau08@gmail.com</a>
+      <a class="btn ghost" href="/">← Full portfolio</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n">23,445</div><div class="l">players valued, refreshed weekly</div></div>
+      <div class="stat"><div class="n">155</div><div class="l">leagues covered by the pipeline</div></div>
+      <div class="stat"><div class="n">~98,000</div><div class="l">player-seasons of history with observed 12-month outcomes</div></div>
+      <div class="stat"><div class="n">1.7×</div><div class="l">undervalued picks signed vs peers — forward-tested, not curve-fit</div></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="sec-label">The platform</div>
+    <h2>Alpha Scout — find undervalued players before the market does</h2>
+    <p class="sec-sub">A live scouting &amp; valuation product, built end to end by one person: harvesting,
+    entity resolution, modelling, calibration, product and design.</p>
+
+    <div class="feat">
+      <h3>How it prices a player</h3>
+      <p class="lead">A hedonic fair-value model (R² = 0.74 on live data) prices every player from performance,
+      age, minutes, league difficulty, contract and club context. The gap between fair value and market price
+      is the scouting signal — validated per league, with the backtest published <b>including the leagues where
+      it is weak</b>.</p>
+      <ul>
+        <li><b>Calibrated probabilities, not vibes</b> — P(value rises), P(falls), P(rises 50%+) per player from
+        a gradient-boosted classifier with isotonic calibration. Rolling out-of-sample design: AUC 0.87–0.90,
+        Brier skill +0.33 to +0.48, clean reliability curves.</li>
+        <li><b>Forward-tested</b> — players flagged as undervalued were signed 1.7× more often than comparable
+        peers in the following window (19.7% vs 10.7%), ranked <i>before</i> the window opened. An earlier
+        version claimed ~3×; my own audit found look-ahead bias in the dating of prices, so I rebuilt it.
+        The honest number is narrower — and defensible.</li>
+        <li><b>Knows its own limits</b> — it declines to price players above €60M: in 98,000 player-seasons
+        there is no comparable case to calibrate on, so it says so instead of guessing.</li>
+        <li><b>Built for the buyer</b> — club view with squad gaps and realistic budgets, "similar players
+        under €1M from your region", contract-expiry radar, one-click club reports.</li>
+      </ul>
+      <div class="shots">
+        <a class="shot" href="/img/alphascout-shot-1.png" target="_blank" rel="noopener"><img src="/img/alphascout-shot-1.png" alt="Alpha Scout explorer" loading="lazy"><span class="cap">Explorer · scout ranking &amp; probabilities</span></a>
+        <a class="shot" href="/img/alphascout-shot-2.png" target="_blank" rel="noopener"><img src="/img/alphascout-shot-2.png" alt="Player profile" loading="lazy"><span class="cap">Player profile · fair value &amp; form</span></a>
+        <a class="shot" href="/img/alphascout-shot-3.png" target="_blank" rel="noopener"><img src="/img/alphascout-shot-3.png" alt="Club view" loading="lazy"><span class="cap">Club view · Boca Juniors sample</span></a>
+      </div>
+      <div class="tags"><span class="tag">Python</span><span class="tag">statsmodels</span><span class="tag">gradient boosting</span><span class="tag">isotonic calibration</span><span class="tag">forward testing</span><span class="tag">Playwright</span><span class="tag">Cloudflare</span></div>
+      <a class="btn primary" style="margin-top:20px" href="https://alphascout.pages.dev" target="_blank" rel="noopener">Open the live demo →</a>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-label">The research behind it</div>
+    <h2>Do match ratings move the transfer market?</h2>
+    <p class="sec-sub">Before building a product on the idea, I tested it like a thesis.</p>
+    <div class="feat">
+      <p class="lead">Standardised per-match ratings predict next-window market-value moves across the big-5
+      leagues: <b>+12% of market value per standard deviation of rating (t = 16.3)</b> on 6,300 player-window
+      observations. The signal survives controls for age, minutes and league — it is the empirical foundation
+      Alpha Scout's fair-value gap is built on.</p>
+      <ul>
+        <li><b>Discipline over drama</b> — a candidate data provider was dropped after forward testing showed
+        no predictive gain (IC 0.359 without vs 0.352 with). Data that doesn't earn its place stays out.</li>
+        <li><b>Every claim audited</b> — the numbers on this page include the ones that got <i>worse</i> when
+        I checked them properly. That is the point.</li>
+      </ul>
+    </div>
+    <div class="quote">"Work that survives its own audit" — the standard every number here is held to.
+    If your club or company values that over a prettier backtest, we should talk.</div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-label">Beyond football</div>
+    <h2>Production experience</h2>
+    <p class="sec-sub">A year owning operational BI end to end at a Dutch firm — forecasting headcount 500+ days
+    ahead, building the reporting an operations floor steered by daily — plus a full SaaS platform built solo
+    (80k lines of TypeScript, 294 tests). Football is the domain I chose; shipping is the habit.
+    Full story at <a href="/" style="color:var(--red)">franciscorau.com</a>.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Francisco Rau · Netherlands · <a href="mailto:franciscorau08@gmail.com">franciscorau08@gmail.com</a> ·
+    <a href="https://www.linkedin.com/in/francisco-rau/" target="_blank" rel="noopener">LinkedIn</a> ·
+    <a href="/cv/Francisco-Rau-CV-Football.pdf">Football CV</a> · <a href="/">Main portfolio</a>
+  </div>
+</footer>
+
+</body>
+</html>
