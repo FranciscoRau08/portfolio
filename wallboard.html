@@ -113,11 +113,11 @@
   .pills{display:flex;flex-wrap:wrap;gap:9px}
   .pillA{display:flex;align-items:center;gap:10px;background:#131519;border:1px solid #2b2e37;border-radius:30px;
          padding:7px 15px 7px 8px;min-width:0;position:relative}
-  /* supervisor-only: red count of inbound calls passed to a teammate */
+  /* badge: count of inbound calls handed on */
   .passbadge{position:absolute;top:-7px;left:-7px;min-width:21px;height:21px;border-radius:11px;background:#c62b3f;color:#fff;
         font-size:11px;font-weight:800;font-family:var(--mono);display:flex;align-items:center;justify-content:center;
         padding:0 5px;border:2px solid #0e2038;box-shadow:0 1px 5px rgba(0,0,0,.45)}
-  /* supervisor-only: available > 5 min idle flag */
+  /* availability flag */
   .pillA.idle{border-color:#c62b3f;box-shadow:0 0 0 1px #c62b3f,0 0 14px rgba(198,43,63,.35)}
   .pillA.idle .av{background:#3a1219;border-color:#6e2233}
   .pillA .idletmr{font-family:var(--mono);font-size:12px;font-weight:800;color:#ff8088;font-variant-numeric:tabular-nums;
@@ -233,7 +233,7 @@ const agents=NAMES.map((n,i)=>{
           idleTotal:ri(200,2400)*1000, pauseTotal:ri(120,2700)*1000,  // cumulative time-in-status TODAY (resets daily)
           closeRate:+(rnd(0.14,0.42)).toFixed(2), pace:ri(55,128)};   // conversion rate + pace, for the cycling panel
 });
-// two agents left idling on "beschikbaar" > 5 min → triggers the supervisor red idle flag
+// two rows idle past the threshold, to exercise the availability flag
 [2,6].forEach(i=>{ agents[i].s="beschikbaar"; agents[i].since=now()-ri(330,520)*1000; agents[i].idley=true; agents[i].passed=ri(2,6); });
 const waits=CAMPS.map(()=>ri(0,3));         // people waiting per queue
 let hot=ri(0,CAMPS.length-1);               // the queue currently being worked hardest
@@ -265,7 +265,7 @@ function tick(){
     if(a.offer){
       if(now()-a.offer.since > rnd(2500,6500)){
         if(Math.random()<0.7){ a.s="gesprek"; a.dir="in"; a.inb++; a.offer=null; adv(); }   // accepted (inbound)
-        else { a.passed++; waits[a.c]=Math.min(9,waits[a.c]+1); a.offer=null; adv(); }        // passed to a teammate
+        else { a.passed++; waits[a.c]=Math.min(9,waits[a.c]+1); a.offer=null; adv(); }        // handed on
       }
       return;
     }
