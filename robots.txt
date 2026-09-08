@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /cv/
+
+Sitemap: https://franciscorau.com/sitemap.xml
